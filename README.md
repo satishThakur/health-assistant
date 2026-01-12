@@ -73,54 +73,205 @@ This is not another passive tracking app. This is an **active experimentation pl
 
 ---
 
-## The Technical Vision
+## Project Structure
 
-### Proving Two Hypotheses
-
-**Product Hypothesis**: N=1 causal health optimization is both possible and valuable with modern AI/ML tools.
-
-**Engineering Hypothesis**: GenAI dramatically lowers the barrier to building in adjacent domains. An experienced backend engineer can ship a production-quality Flutter app, train Bayesian models, and integrate LLMs - solo, in months not years.
-
-### Tech Stack
-
-- **Frontend**: Flutter (mobile + web, single codebase)
-- **Backend**: Go microservices (API gateway, data service, experiment engine, ingestion)
-- **ML/Models**: Python (PyMC for Bayesian models, FastAPI for serving)
-- **Database**: PostgreSQL + TimescaleDB (time-series optimization)
-- **Storage**: AWS S3 (meal photos, lab PDFs)
-- **AI/LLM**: Claude/GPT-4V for meal analysis, health report parsing, reasoning
-- **Infra**: Docker, AWS (ECS, RDS, S3)
-
-### Architecture Philosophy
-
-- **Microservices**: Clean separation of concerns (data, models, experiments, ingestion)
-- **API-first**: REST endpoints for all interactions
-- **Time-series native**: TimescaleDB for efficient time-based queries
-- **Ultra hands-on**: Full access to raw data, model diagnostics, experiment design
-- **Statistically rigorous**: Bayesian methods, credible intervals, proper causal inference
-
-See [highleveldesign.md](./highleveldesign.md) for full architecture details.
+```
+health-assistant/
+├── docs/                        # Documentation
+│   ├── README.md               # Detailed project vision (this file moved)
+│   ├── idea.md                 # Product vision and problem statement
+│   ├── highleveldesign.md      # System architecture and tech stack
+│   └── project-plan.md         # 6-8 month roadmap
+│
+├── backend/                     # Go backend (single module, multiple binaries)
+│   ├── cmd/                    # Service entry points
+│   │   ├── api-gateway/        # Main API gateway (port 8080)
+│   │   ├── data-service/       # CRUD operations (port 8081)
+│   │   ├── experiment-service/ # Experiment engine (port 8082)
+│   │   └── ingestion-service/  # Garmin sync, photo processing (port 8083)
+│   ├── internal/               # Private application code
+│   │   ├── api/               # HTTP handlers
+│   │   ├── db/                # Database layer
+│   │   ├── auth/              # JWT authentication
+│   │   ├── models/            # Domain models
+│   │   ├── garmin/            # Garmin API client
+│   │   ├── llm/               # LLM integrations
+│   │   └── config/            # Configuration
+│   └── go.mod                 # Go module definition
+│
+├── model-service/              # Python ML service
+│   ├── app/
+│   │   ├── main.py            # FastAPI application
+│   │   ├── models/            # PyMC Bayesian models
+│   │   └── api/               # API routes
+│   ├── notebooks/             # Jupyter notebooks for exploration
+│   ├── requirements.txt
+│   └── Dockerfile
+│
+├── app/                        # Flutter application
+│   └── health_assistant/      # Flutter project (to be created)
+│       ├── lib/               # Dart source code
+│       ├── test/              # Tests
+│       └── pubspec.yaml       # Dependencies
+│
+├── infra/                      # Infrastructure
+│   ├── docker-compose.yml     # Local development stack
+│   ├── docker/                # Additional Docker configs
+│   └── terraform/             # AWS infrastructure (future)
+│
+├── scripts/                    # Helper scripts
+│   ├── db/
+│   │   ├── init.sql           # Database schema
+│   │   ├── migrations/        # SQL migrations
+│   │   └── seed.sql           # Sample data
+│   └── bin/                   # Utility scripts
+│
+├── .gitignore
+└── README.md                   # This file
+```
 
 ---
 
-## Project Documentation
+## Tech Stack
 
-- **[idea.md](./idea.md)**: Full product vision, problem statement, use cases, success criteria
-- **[highleveldesign.md](./highleveldesign.md)**: System architecture, tech stack, data model, API design
-- **[project-plan.md](./project-plan.md)**: 6-8 month roadmap with realistic milestones (4-5 hours/week constraint)
+### Backend
+- **Language**: Go 1.22+
+- **Architecture**: Single module with multiple service binaries
+- **Database**: PostgreSQL + TimescaleDB (time-series optimization)
+- **Storage**: AWS S3 (meal photos, lab PDFs)
+- **Auth**: JWT tokens
+
+### Model Service
+- **Language**: Python 3.11+
+- **Framework**: FastAPI
+- **ML**: PyMC (Bayesian models), NumPy, Pandas
+- **Visualization**: Matplotlib, Plotly
+
+### Frontend
+- **Framework**: Flutter (Dart)
+- **Platforms**: Mobile (iOS, Android) + Web
+- **State Management**: Riverpod or Bloc
+
+### Infrastructure
+- **Containerization**: Docker, Docker Compose
+- **Cloud**: AWS (ECS, RDS, S3)
+- **Local Development**: PostgreSQL + TimescaleDB, MinIO (S3-compatible)
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- Docker and Docker Compose
+- Go 1.22+ (for backend development)
+- Python 3.11+ (for model service development)
+- Flutter SDK (for mobile app development)
+
+### Local Development Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/satishThakur/health-assistant.git
+   cd health-assistant
+   ```
+
+2. **Set up environment variables**
+   ```bash
+   cd infra
+   cp .env.example .env
+   # Edit .env with your API keys (Garmin, OpenAI, etc.)
+   ```
+
+3. **Start the infrastructure**
+   ```bash
+   cd infra
+   docker-compose up -d
+   ```
+
+   This will start:
+   - PostgreSQL + TimescaleDB (port 5432)
+   - MinIO (S3-compatible storage, ports 9000, 9001)
+   - API Gateway (port 8080)
+   - Data Service (port 8081)
+   - Experiment Service (port 8082)
+   - Ingestion Service (port 8083)
+   - Model Service (port 8084)
+
+4. **Verify services are running**
+   ```bash
+   curl http://localhost:8080/health  # API Gateway
+   curl http://localhost:8084/health  # Model Service
+   ```
+
+5. **Access MinIO Console**
+   - URL: http://localhost:9001
+   - Username: `minioadmin`
+   - Password: `minioadmin`
+
+### Running Services Individually (for development)
+
+**Backend Services (Go)**:
+```bash
+cd backend
+
+# Run a specific service
+go run ./cmd/api-gateway
+go run ./cmd/data-service
+go run ./cmd/experiment-service
+go run ./cmd/ingestion-service
+```
+
+**Model Service (Python)**:
+```bash
+cd model-service
+pip install -r requirements.txt
+python app/main.py
+```
+
+**Flutter App**:
+```bash
+cd app/health_assistant  # After running flutter create
+flutter pub get
+flutter run
+```
+
+---
+
+## Documentation
+
+- **[docs/idea.md](./docs/idea.md)**: Full product vision, problem statement, use cases
+- **[docs/highleveldesign.md](./docs/highleveldesign.md)**: System architecture, data model, API design
+- **[docs/project-plan.md](./docs/project-plan.md)**: 6-8 month roadmap with milestones
+- **[backend/README.md](./backend/README.md)**: Backend service documentation
+- **[model-service/README.md](./model-service/README.md)**: Model service documentation
+- **[app/README.md](./app/README.md)**: Flutter app documentation
 
 ---
 
 ## Current Status
 
-**Phase**: Planning & Documentation Complete ✅
+**Phase**: Foundation Setup Complete ✅
 
-**Next Steps**:
-- M1: Foundation (Weeks 1-4) - Set up local dev environment, database, basic API
-- Begin Garmin API integration
-- Start collecting personal data
+### Completed
+- ✅ Project structure defined
+- ✅ Backend skeleton (Go services)
+- ✅ Model service skeleton (Python/FastAPI)
+- ✅ Database schema (PostgreSQL + TimescaleDB)
+- ✅ Docker Compose for local development
+- ✅ Domain models and configuration
+- ✅ Sample data seed scripts
 
-**Timeline**: MVP in 6-8 months (targeting functional system by mid-2026)
+### Next Steps
+- [ ] Initialize Flutter app
+- [ ] Implement database connection in backend
+- [ ] Add JWT authentication
+- [ ] Build first API endpoints
+- [ ] Integrate Garmin API
+- [ ] Add LLM integration for meal analysis
+- [ ] Implement first Bayesian model (sleep quality)
+
+See [docs/project-plan.md](./docs/project-plan.md) for detailed roadmap.
 
 ---
 
@@ -138,26 +289,6 @@ To validate the entire system, the first experiment will be:
 **Design**: 12-week factorial experiment with proper controls and washout periods
 
 **Expected outcome**: Bayesian posterior distributions showing effect sizes with uncertainty. Finally know if creatine actually works for me.
-
----
-
-## Why Open Source This? (Future)
-
-Once the MVP is proven, the plan is to open source components:
-
-- **Experiment engine**: Reusable library for designing and analyzing n=1 experiments
-- **Bayesian health models**: Templates for common health predictions (sleep, energy, recovery)
-- **LLM integration patterns**: How to use AI for health data parsing and reasoning
-
-The world needs more tools for rigorous self-experimentation. If this works for me, the components can help others.
-
-But first: build it, use it, prove it works.
-
----
-
-## Getting Started (Coming Soon)
-
-Setup instructions will be added once M1 is complete. For now, see [project-plan.md](./project-plan.md) for the development roadmap.
 
 ---
 
@@ -179,6 +310,12 @@ Will update this table as the project progresses.
 
 ---
 
+## Contributing
+
+This is currently a personal project for learning and experimentation. Once the MVP is proven, components may be open sourced for community contribution.
+
+---
+
 ## License
 
 TBD (likely MIT once open sourced)
@@ -189,9 +326,9 @@ TBD (likely MIT once open sourced)
 
 This is a personal project by an experienced engineer exploring the intersection of health optimization, causal inference, and GenAI-accelerated development.
 
-If this resonates with you or you're working on similar problems, reach out. Always interested in discussing n=1 experimentation, Bayesian methods, or the future of personalized health.
+If this resonates with you or you're working on similar problems, feel free to open an issue or reach out.
 
 ---
 
 **Last Updated**: January 2026
-**Status**: Planning Complete, Ready to Build 🚀
+**Status**: Foundation Complete, Ready to Build 🚀

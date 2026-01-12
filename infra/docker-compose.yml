@@ -1,0 +1,188 @@
+version: '3.8'
+
+services:
+  # PostgreSQL with TimescaleDB
+  postgres:
+    image: timescale/timescaledb:latest-pg16
+    container_name: health-assistant-db
+    environment:
+      POSTGRES_USER: healthuser
+      POSTGRES_PASSWORD: healthpass
+      POSTGRES_DB: health_assistant
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ../scripts/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql
+      - ../scripts/db/migrations:/docker-entrypoint-initdb.d/migrations
+    networks:
+      - health-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U healthuser -d health_assistant"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # MinIO (Local S3-compatible storage)
+  minio:
+    image: minio/minio:latest
+    container_name: health-assistant-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    volumes:
+      - minio-data:/data
+    networks:
+      - health-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+  # API Gateway
+  api-gateway:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.api-gateway
+    container_name: health-assistant-api-gateway
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: healthuser
+      DB_PASSWORD: healthpass
+      DB_NAME: health_assistant
+      DB_SSLMODE: disable
+      SERVER_PORT: 8080
+      ENV: development
+      JWT_SECRET: dev-secret-change-in-production
+      AWS_REGION: us-east-1
+      AWS_S3_BUCKET: health-photos
+      AWS_ENDPOINT: http://minio:9000  # For local MinIO
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - health-network
+    # Uncomment for local development without Docker build
+    # volumes:
+    #   - ../backend:/app
+
+  # Data Service
+  data-service:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.data-service
+    container_name: health-assistant-data-service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: healthuser
+      DB_PASSWORD: healthpass
+      DB_NAME: health_assistant
+      DB_SSLMODE: disable
+      SERVER_PORT: 8081
+      ENV: development
+    ports:
+      - "8081:8081"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - health-network
+
+  # Experiment Service
+  experiment-service:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.experiment-service
+    container_name: health-assistant-experiment-service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: healthuser
+      DB_PASSWORD: healthpass
+      DB_NAME: health_assistant
+      DB_SSLMODE: disable
+      SERVER_PORT: 8082
+      ENV: development
+    ports:
+      - "8082:8082"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - health-network
+
+  # Ingestion Service
+  ingestion-service:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.ingestion-service
+    container_name: health-assistant-ingestion-service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: healthuser
+      DB_PASSWORD: healthpass
+      DB_NAME: health_assistant
+      DB_SSLMODE: disable
+      SERVER_PORT: 8083
+      ENV: development
+      AWS_ENDPOINT: http://minio:9000
+      AWS_ACCESS_KEY_ID: minioadmin
+      AWS_SECRET_ACCESS_KEY: minioadmin
+      GARMIN_CONSUMER_KEY: ${GARMIN_CONSUMER_KEY:-}
+      GARMIN_CONSUMER_SECRET: ${GARMIN_CONSUMER_SECRET:-}
+    ports:
+      - "8083:8083"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    networks:
+      - health-network
+
+  # Model Service (Python/FastAPI)
+  model-service:
+    build:
+      context: ../model-service
+      dockerfile: Dockerfile
+    container_name: health-assistant-model-service
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: healthuser
+      DB_PASSWORD: healthpass
+      DB_NAME: health_assistant
+      DB_SSLMODE: disable
+    ports:
+      - "8084:8084"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - health-network
+    # Uncomment for local development without Docker build
+    # volumes:
+    #   - ../model-service:/app
+
+volumes:
+  postgres-data:
+  minio-data:
+
+networks:
+  health-network:
+    driver: bridge
