@@ -1,6 +1,8 @@
 # Garmin Health API Integration Guide
 
-This guide explains how to integrate with Garmin Health API to pull health and fitness data.
+⚠️ **IMPORTANT LIMITATION**: Garmin Health API is typically **only approved for commercial entities, healthcare organizations, and research institutions** - NOT individual/personal developers. For practical alternatives, see [wearable-data-sources.md](./wearable-data-sources.md).
+
+This guide explains how to integrate with Garmin Health API to pull health and fitness data **if you have commercial entity approval**.
 
 ## Overview
 
