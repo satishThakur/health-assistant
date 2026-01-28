@@ -179,6 +179,27 @@ services:
     # volumes:
     #   - ../model-service:/app
 
+  # Garmin Scheduler Service (Python)
+  garmin-scheduler:
+    build:
+      context: ../services/garmin-scheduler
+      dockerfile: Dockerfile
+    container_name: health-assistant-garmin-scheduler
+    environment:
+      GARMIN_EMAIL: ${GARMIN_EMAIL}
+      GARMIN_PASSWORD: ${GARMIN_PASSWORD}
+      DEFAULT_USER_ID: ${DEFAULT_USER_ID:-00000000-0000-0000-0000-000000000001}
+      INGESTION_SERVICE_URL: http://ingestion-service:8083
+      SYNC_CRON_HOUR: ${SYNC_CRON_HOUR:-*}
+      SYNC_CRON_MINUTE: ${SYNC_CRON_MINUTE:-0}
+    ports:
+      - "8085:8085"
+    depends_on:
+      - ingestion-service
+    networks:
+      - health-network
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   minio-data:
