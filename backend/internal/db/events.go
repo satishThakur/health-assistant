@@ -19,8 +19,14 @@ func NewEventRepository(db *Database) *EventRepository {
 	return &EventRepository{db: db}
 }
 
+// InsertEventResult contains the result of an insert/update operation
+type InsertEventResult struct {
+	WasInserted bool // true if inserted, false if updated
+}
+
 // InsertEvent inserts a new event or updates if conflict on (time, user_id, event_type)
-func (r *EventRepository) InsertEvent(ctx context.Context, event *models.Event) error {
+// Returns InsertEventResult indicating whether the row was inserted or updated
+func (r *EventRepository) InsertEvent(ctx context.Context, event *models.Event) (*InsertEventResult, error) {
 	query := `
 		INSERT INTO events (time, user_id, event_type, source, data, metadata, confidence)
 		VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -31,10 +37,10 @@ func (r *EventRepository) InsertEvent(ctx context.Context, event *models.Event) 
 			metadata = EXCLUDED.metadata,
 			confidence = EXCLUDED.confidence,
 			updated_at = CURRENT_TIMESTAMP
-		RETURNING id
+		RETURNING (xmax = 0) AS was_inserted
 	`
 
-	var id int64
+	var wasInserted bool
 	err := r.db.Pool.QueryRow(
 		ctx,
 		query,
@@ -45,13 +51,13 @@ func (r *EventRepository) InsertEvent(ctx context.Context, event *models.Event) 
 		event.Data,
 		event.Metadata,
 		event.Confidence,
-	).Scan(&id)
+	).Scan(&wasInserted)
 
 	if err != nil {
-		return fmt.Errorf("failed to insert event: %w", err)
+		return nil, fmt.Errorf("failed to insert event: %w", err)
 	}
 
-	return nil
+	return &InsertEventResult{WasInserted: wasInserted}, nil
 }
 
 // GetEventsByUserAndType retrieves events for a user filtered by event type

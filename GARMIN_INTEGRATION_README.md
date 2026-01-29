@@ -73,17 +73,42 @@ FROM events
 WHERE event_type = 'garmin_sleep'
 ORDER BY time DESC
 LIMIT 5;
+
+# View sync audit logs
+SELECT data_type, target_date, records_fetched, records_inserted, records_updated, status
+FROM sync_audit
+ORDER BY sync_started_at DESC
+LIMIT 10;
+
+# Get sync statistics
+SELECT
+    data_type,
+    COUNT(*) as total_syncs,
+    SUM(records_fetched) as total_fetched,
+    SUM(records_inserted) as total_inserted,
+    SUM(records_updated) as total_updated,
+    AVG(sync_duration_seconds) as avg_duration
+FROM sync_audit
+WHERE status = 'success'
+GROUP BY data_type;
 ```
 
 ## API Endpoints
 
 ### Go Ingestion Service (Port 8083)
 
+**Data Ingestion:**
 - `GET /health` - Health check
 - `POST /api/v1/garmin/ingest/sleep` - Ingest sleep data
 - `POST /api/v1/garmin/ingest/activity` - Ingest activity data
 - `POST /api/v1/garmin/ingest/hrv` - Ingest HRV data
 - `POST /api/v1/garmin/ingest/stress` - Ingest stress data
+
+**Audit/Monitoring:**
+- `POST /api/v1/audit/sync` - Record sync audit entry
+- `GET /api/v1/audit/sync/recent?user_id=X&limit=50` - Get recent sync audits
+- `GET /api/v1/audit/sync/by-type?data_type=sleep&limit=50` - Get audits by data type
+- `GET /api/v1/audit/sync/stats?user_id=X&start=2026-01-01&end=2026-01-31` - Get sync statistics
 
 ### Python Scheduler Service (Port 8085)
 
@@ -129,6 +154,50 @@ POST http://localhost:8083/api/v1/garmin/ingest/activity
     "average_heart_rate": 132,
     "max_heart_rate": 168
   }
+}
+```
+
+## Sync Audit & Monitoring
+
+Every sync run is automatically tracked in the `sync_audit` table with detailed metrics:
+
+**Metrics tracked per sync:**
+- Records fetched from Garmin API
+- Records inserted (new data)
+- Records updated (existing data)
+- Sync duration
+- First and last timestamps in the data
+- Success/failure status
+- Error messages if failed
+
+**View recent sync audits via API:**
+```bash
+# Get recent audits for a user
+curl "http://localhost:8083/api/v1/audit/sync/recent?user_id=00000000-0000-0000-0000-000000000001&limit=10"
+
+# Get audits for specific data type
+curl "http://localhost:8083/api/v1/audit/sync/by-type?data_type=sleep&limit=20"
+
+# Get sync statistics
+curl "http://localhost:8083/api/v1/audit/sync/stats?user_id=00000000-0000-0000-0000-000000000001"
+```
+
+**Example audit record:**
+```json
+{
+  "id": "uuid",
+  "sync_started_at": "2026-01-29T10:00:00Z",
+  "sync_completed_at": "2026-01-29T10:00:03Z",
+  "sync_duration_seconds": 3,
+  "user_id": "00000000-0000-0000-0000-000000000001",
+  "data_type": "sleep",
+  "target_date": "2026-01-28",
+  "records_fetched": 1,
+  "records_inserted": 0,
+  "records_updated": 1,
+  "earliest_timestamp": "2026-01-28T07:30:00Z",
+  "latest_timestamp": "2026-01-28T07:30:00Z",
+  "status": "success"
 }
 ```
 

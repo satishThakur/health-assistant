@@ -55,16 +55,26 @@ func (h *GarminIngestionHandler) HandleSleepIngestion(w http.ResponseWriter, r *
 	}
 
 	// Store in database
-	if err := h.eventRepo.InsertEvent(r.Context(), event); err != nil {
+	result, err := h.eventRepo.InsertEvent(r.Context(), event)
+	if err != nil {
 		log.Printf("Failed to insert sleep event: %v", err)
 		http.Error(w, "Failed to store event", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Successfully ingested sleep data for user %s on %s", payload.UserID, payload.Date)
+	action := "updated"
+	if result.WasInserted {
+		action = "inserted"
+	}
+	log.Printf("Successfully %s sleep data for user %s on %s", action, payload.UserID, payload.Date)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":       "success",
+		"action":       action,
+		"was_inserted": result.WasInserted,
+	})
 }
 
 // HandleActivityIngestion handles POST /api/v1/garmin/ingest/activity
@@ -98,16 +108,26 @@ func (h *GarminIngestionHandler) HandleActivityIngestion(w http.ResponseWriter, 
 	}
 
 	// Store in database
-	if err := h.eventRepo.InsertEvent(r.Context(), event); err != nil {
+	result, err := h.eventRepo.InsertEvent(r.Context(), event)
+	if err != nil {
 		log.Printf("Failed to insert activity event: %v", err)
 		http.Error(w, "Failed to store event", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Successfully ingested activity data for user %s on %s", payload.UserID, payload.Date)
+	action := "updated"
+	if result.WasInserted {
+		action = "inserted"
+	}
+	log.Printf("Successfully %s activity data for user %s on %s", action, payload.UserID, payload.Date)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":       "success",
+		"action":       action,
+		"was_inserted": result.WasInserted,
+	})
 }
 
 // HandleHRVIngestion handles POST /api/v1/garmin/ingest/hrv
@@ -141,16 +161,26 @@ func (h *GarminIngestionHandler) HandleHRVIngestion(w http.ResponseWriter, r *ht
 	}
 
 	// Store in database
-	if err := h.eventRepo.InsertEvent(r.Context(), event); err != nil {
+	result, err := h.eventRepo.InsertEvent(r.Context(), event)
+	if err != nil {
 		log.Printf("Failed to insert HRV event: %v", err)
 		http.Error(w, "Failed to store event", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Successfully ingested HRV data for user %s on %s", payload.UserID, payload.Date)
+	action := "updated"
+	if result.WasInserted {
+		action = "inserted"
+	}
+	log.Printf("Successfully %s HRV data for user %s on %s", action, payload.UserID, payload.Date)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":       "success",
+		"action":       action,
+		"was_inserted": result.WasInserted,
+	})
 }
 
 // HandleStressIngestion handles POST /api/v1/garmin/ingest/stress
@@ -184,16 +214,26 @@ func (h *GarminIngestionHandler) HandleStressIngestion(w http.ResponseWriter, r 
 	}
 
 	// Store in database
-	if err := h.eventRepo.InsertEvent(r.Context(), event); err != nil {
+	result, err := h.eventRepo.InsertEvent(r.Context(), event)
+	if err != nil {
 		log.Printf("Failed to insert stress event: %v", err)
 		http.Error(w, "Failed to store event", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("Successfully ingested stress data for user %s on %s", payload.UserID, payload.Date)
+	action := "updated"
+	if result.WasInserted {
+		action = "inserted"
+	}
+	log.Printf("Successfully %s stress data for user %s on %s", action, payload.UserID, payload.Date)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "success"})
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":       "success",
+		"action":       action,
+		"was_inserted": result.WasInserted,
+	})
 }
 
 // Transform functions

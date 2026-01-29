@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from typing import Optional
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -104,7 +104,7 @@ class GarminSyncScheduler:
 
     async def _sync_date(self, target_date: date):
         """
-        Sync all data types for a specific date.
+        Sync all data types for a specific date with audit tracking.
 
         Args:
             target_date: Date to sync data for
@@ -112,62 +112,154 @@ class GarminSyncScheduler:
         logger.info(f"Syncing data for {target_date}")
         user_id = settings.DEFAULT_USER_ID
 
-        # Sync sleep data
-        try:
-            sleep_data = self.garmin_client.get_sleep_data(target_date)
-            if sleep_data:
-                success = await self.ingestion_client.post_sleep_data(
-                    user_id=user_id,
-                    target_date=target_date,
-                    sleep_data=sleep_data,
-                )
-                if success:
-                    logger.info(f"Sleep data synced for {target_date}")
-        except Exception as e:
-            logger.error(f"Error syncing sleep data for {target_date}: {e}")
+        # Sync sleep data with audit
+        await self._sync_data_type(
+            data_type="sleep",
+            target_date=target_date,
+            user_id=user_id,
+        )
 
-        # Sync activity data
+        # Sync activity data with audit
+        await self._sync_data_type(
+            data_type="activity",
+            target_date=target_date,
+            user_id=user_id,
+        )
+
+        # Sync HRV data with audit
+        await self._sync_data_type(
+            data_type="hrv",
+            target_date=target_date,
+            user_id=user_id,
+        )
+
+        # Sync stress data with audit
+        await self._sync_data_type(
+            data_type="stress",
+            target_date=target_date,
+            user_id=user_id,
+        )
+
+    async def _sync_data_type(self, data_type: str, target_date: date, user_id: str):
+        """
+        Sync a specific data type with full audit tracking.
+
+        Args:
+            data_type: Type of data ('sleep', 'activity', 'hrv', 'stress')
+            target_date: Date to sync
+            user_id: User ID
+        """
+        sync_started_at = datetime.utcnow()
+        records_fetched = 0
+        records_inserted = 0
+        records_updated = 0
+        status = "success"
+        error_message = None
+        earliest_timestamp = None
+        latest_timestamp = None
+
         try:
-            activities = self.garmin_client.get_activity_data(target_date)
-            if activities:
-                for activity in activities:
-                    success = await self.ingestion_client.post_activity_data(
+            # Fetch data from Garmin
+            if data_type == "sleep":
+                data = self.garmin_client.get_sleep_data(target_date)
+                if data:
+                    records_fetched = 1
+                    response = await self.ingestion_client.post_sleep_data(
                         user_id=user_id,
                         target_date=target_date,
-                        activity_data=activity,
+                        sleep_data=data,
                     )
-                    if success:
-                        logger.info(f"Activity synced for {target_date}: {activity['activity_type']}")
-        except Exception as e:
-            logger.error(f"Error syncing activity data for {target_date}: {e}")
+                    if response and response.get("was_inserted"):
+                        records_inserted = 1
+                    else:
+                        records_updated = 1
 
-        # Sync HRV data
-        try:
-            hrv_data = self.garmin_client.get_hrv_data(target_date)
-            if hrv_data:
-                success = await self.ingestion_client.post_hrv_data(
-                    user_id=user_id,
-                    target_date=target_date,
-                    hrv_data=hrv_data,
-                )
-                if success:
-                    logger.info(f"HRV data synced for {target_date}")
-        except Exception as e:
-            logger.error(f"Error syncing HRV data for {target_date}: {e}")
+                    # Extract timestamp if available
+                    if "sleep_end_timestamp_gmt" in data:
+                        earliest_timestamp = latest_timestamp = data["sleep_end_timestamp_gmt"]
 
-        # Sync stress data
-        try:
-            stress_data = self.garmin_client.get_stress_data(target_date)
-            if stress_data:
-                success = await self.ingestion_client.post_stress_data(
-                    user_id=user_id,
-                    target_date=target_date,
-                    stress_data=stress_data,
+            elif data_type == "activity":
+                activities = self.garmin_client.get_activity_data(target_date)
+                if activities:
+                    records_fetched = len(activities)
+                    for activity in activities:
+                        response = await self.ingestion_client.post_activity_data(
+                            user_id=user_id,
+                            target_date=target_date,
+                            activity_data=activity,
+                        )
+                        if response:
+                            if response.get("was_inserted"):
+                                records_inserted += 1
+                            else:
+                                records_updated += 1
+
+                            # Track timestamps
+                            if "start_time_gmt" in activity:
+                                ts = activity["start_time_gmt"]
+                                if earliest_timestamp is None or ts < earliest_timestamp:
+                                    earliest_timestamp = ts
+                                if latest_timestamp is None or ts > latest_timestamp:
+                                    latest_timestamp = ts
+
+            elif data_type == "hrv":
+                data = self.garmin_client.get_hrv_data(target_date)
+                if data:
+                    records_fetched = 1
+                    response = await self.ingestion_client.post_hrv_data(
+                        user_id=user_id,
+                        target_date=target_date,
+                        hrv_data=data,
+                    )
+                    if response and response.get("was_inserted"):
+                        records_inserted = 1
+                    else:
+                        records_updated = 1
+
+            elif data_type == "stress":
+                data = self.garmin_client.get_stress_data(target_date)
+                if data:
+                    records_fetched = 1
+                    response = await self.ingestion_client.post_stress_data(
+                        user_id=user_id,
+                        target_date=target_date,
+                        stress_data=data,
+                    )
+                    if response and response.get("was_inserted"):
+                        records_inserted = 1
+                    else:
+                        records_updated = 1
+
+            if records_fetched > 0:
+                logger.info(
+                    f"{data_type.capitalize()} sync for {target_date}: "
+                    f"fetched={records_fetched}, inserted={records_inserted}, updated={records_updated}"
                 )
-                if success:
-                    logger.info(f"Stress data synced for {target_date}")
+
         except Exception as e:
-            logger.error(f"Error syncing stress data for {target_date}: {e}")
+            status = "failed"
+            error_message = str(e)
+            logger.error(f"Error syncing {data_type} data for {target_date}: {e}")
+
+        # Record audit
+        sync_completed_at = datetime.utcnow()
+        sync_duration_seconds = int((sync_completed_at - sync_started_at).total_seconds())
+
+        await self.ingestion_client.post_sync_audit(
+            user_id=user_id,
+            data_type=data_type,
+            target_date=target_date,
+            sync_started_at=sync_started_at,
+            sync_completed_at=sync_completed_at,
+            sync_duration_seconds=sync_duration_seconds,
+            records_fetched=records_fetched,
+            records_inserted=records_inserted,
+            records_updated=records_updated,
+            earliest_timestamp=earliest_timestamp,
+            latest_timestamp=latest_timestamp,
+            status=status,
+            error_message=error_message,
+        )
 
     async def trigger_manual_sync(self):
         """Manually trigger a sync (for testing/on-demand sync)."""

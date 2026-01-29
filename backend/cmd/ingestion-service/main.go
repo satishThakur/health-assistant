@@ -33,9 +33,11 @@ func main() {
 
 	// Create repositories
 	eventRepo := db.NewEventRepository(database)
+	auditRepo := db.NewAuditRepository(database)
 
 	// Create handlers
 	garminHandler := handlers.NewGarminIngestionHandler(eventRepo)
+	auditHandler := handlers.NewAuditHandler(auditRepo)
 
 	// Setup routes
 	mux := http.NewServeMux()
@@ -66,6 +68,12 @@ func main() {
 	mux.HandleFunc("/api/v1/garmin/ingest/activity", garminHandler.HandleActivityIngestion)
 	mux.HandleFunc("/api/v1/garmin/ingest/hrv", garminHandler.HandleHRVIngestion)
 	mux.HandleFunc("/api/v1/garmin/ingest/stress", garminHandler.HandleStressIngestion)
+
+	// Audit endpoints
+	mux.HandleFunc("/api/v1/audit/sync", auditHandler.HandlePostSyncAudit)
+	mux.HandleFunc("/api/v1/audit/sync/recent", auditHandler.HandleGetRecentSyncAudits)
+	mux.HandleFunc("/api/v1/audit/sync/by-type", auditHandler.HandleGetSyncAuditsByType)
+	mux.HandleFunc("/api/v1/audit/sync/stats", auditHandler.HandleGetSyncAuditStats)
 
 	// Create HTTP server
 	port := ":8083"
