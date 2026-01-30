@@ -17,6 +17,26 @@ Go Ingestion Service (Port 8083)
 
 ## Quick Start
 
+### Option A: Automated Integration Test (Recommended)
+
+Run the automated integration test script that does everything for you:
+
+```bash
+./scripts/test-integration.sh
+```
+
+This script will:
+- ✓ Validate environment setup
+- ✓ Start all containers
+- ✓ Wait for services to be healthy
+- ✓ Trigger data sync
+- ✓ Validate data was pulled
+- ✓ Show detailed summary
+
+**Skip to [Integration Test](#integration-test) section for more details.**
+
+### Option B: Manual Setup
+
 ### 1. Set up environment variables
 
 Copy the example environment file:
@@ -326,6 +346,54 @@ go run cmd/ingestion-service/main.go
 - `backend/Dockerfile.ingestion-service` - Go service Dockerfile
 - `services/garmin-scheduler/Dockerfile` - Python service Dockerfile
 - `infra/docker-compose.yml` - Container orchestration
+
+## Integration Test
+
+### Automated End-to-End Test
+
+Run the integration test script to validate the entire system:
+
+```bash
+./scripts/test-integration.sh
+```
+
+**What it tests:**
+- All containers start successfully
+- Services respond to health checks
+- Database schema is initialized
+- Garmin API connection works
+- Data flows through the pipeline
+- Audit logging captures metrics
+- API endpoints work correctly
+
+**Options:**
+```bash
+# Run test and cleanup after
+./scripts/test-integration.sh --cleanup
+
+# Skip log display
+./scripts/test-integration.sh --skip-logs
+
+# Show help
+./scripts/test-integration.sh --help
+```
+
+**Example output:**
+```
+┌─────────────────────────────────────────┐
+│        Integration Test Results         │
+├─────────────────────────────────────────┤
+│ Total Events:                      12 │
+│ Total Sync Runs:                    8 │
+│ Successful Syncs:                   7 │
+│ Records Fetched:                   12 │
+│ Records Inserted:                   5 │
+│ Records Updated:                    7 │
+└─────────────────────────────────────────┘
+[SUCCESS] Integration test PASSED ✓
+```
+
+See [scripts/README.md](scripts/README.md) for detailed documentation.
 
 ## Next Steps
 
