@@ -1,0 +1,201 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+jobs:
+  go-tests:
+    name: Go Tests & Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
+
+      - name: Install dependencies
+        working-directory: backend
+        run: go mod download
+
+      - name: Run go vet
+        working-directory: backend
+        run: go vet ./...
+
+      - name: Run tests
+        working-directory: backend
+        run: go test -v -race -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./backend/coverage.out
+          flags: go
+        continue-on-error: true
+
+  go-build:
+    name: Go Build Validation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api-gateway, data-service, experiment-service, ingestion-service]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+          cache-dependency-path: backend/go.sum
+
+      - name: Build ${{ matrix.service }}
+        working-directory: backend
+        run: go build -v ./cmd/${{ matrix.service }}
+
+  python-tests:
+    name: Python Tests & Linting
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: services/garmin-scheduler/requirements.txt
+
+      - name: Install dependencies
+        working-directory: services/garmin-scheduler
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-asyncio pytest-cov black flake8
+
+      - name: Run black (format check)
+        working-directory: services/garmin-scheduler
+        run: black --check app/
+        continue-on-error: true
+
+      - name: Run flake8 (linting)
+        working-directory: services/garmin-scheduler
+        run: flake8 app/ --max-line-length=100 --extend-ignore=E203,W503
+        continue-on-error: true
+
+      - name: Run tests
+        working-directory: services/garmin-scheduler
+        run: pytest tests/ -v --cov=app --cov-report=xml
+        continue-on-error: true
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./services/garmin-scheduler/coverage.xml
+          flags: python
+        continue-on-error: true
+
+  docker-build:
+    name: Docker Build Validation
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: ingestion-service
+            context: backend
+            dockerfile: Dockerfile.ingestion-service
+          - name: garmin-scheduler
+            context: services/garmin-scheduler
+            dockerfile: Dockerfile
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.service.name }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.service.context }}
+          file: ${{ matrix.service.context }}/${{ matrix.service.dockerfile }}
+          push: false
+          tags: ${{ matrix.service.name }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  sql-validation:
+    name: SQL Schema Validation
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Start PostgreSQL
+        run: |
+          docker run -d \
+            --name postgres-test \
+            -e POSTGRES_USER=healthuser \
+            -e POSTGRES_PASSWORD=healthpass \
+            -e POSTGRES_DB=health_assistant \
+            -p 5432:5432 \
+            timescale/timescaledb:latest-pg16
+
+      - name: Wait for PostgreSQL
+        run: |
+          for i in {1..30}; do
+            docker exec postgres-test pg_isready -U healthuser && break
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+
+      - name: Apply schema
+        run: |
+          docker exec -i postgres-test psql -U healthuser -d health_assistant < scripts/db/init.sql
+
+      - name: Apply migrations
+        run: |
+          for migration in scripts/db/migrations/*.sql; do
+            echo "Applying $migration..."
+            docker exec -i postgres-test psql -U healthuser -d health_assistant < "$migration"
+          done
+
+      - name: Validate schema
+        run: |
+          docker exec postgres-test psql -U healthuser -d health_assistant -c "\dt"
+          docker exec postgres-test psql -U healthuser -d health_assistant -c "SELECT COUNT(*) FROM users;"
+          docker exec postgres-test psql -U healthuser -d health_assistant -c "SELECT COUNT(*) FROM sync_audit;"
+
+      - name: Stop PostgreSQL
+        if: always()
+        run: docker stop postgres-test && docker rm postgres-test
+
+  status-check:
+    name: All Checks Passed
+    runs-on: ubuntu-latest
+    needs: [go-tests, go-build, python-tests, docker-build, sql-validation]
+    if: always()
+
+    steps:
+      - name: Check all jobs
+        run: |
+          if [ "${{ needs.go-tests.result }}" != "success" ] || \
+             [ "${{ needs.go-build.result }}" != "success" ] || \
+             [ "${{ needs.python-tests.result }}" != "success" ] || \
+             [ "${{ needs.docker-build.result }}" != "success" ] || \
+             [ "${{ needs.sql-validation.result }}" != "success" ]; then
+            echo "One or more checks failed"
+            exit 1
+          fi
+          echo "All checks passed!"

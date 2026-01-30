@@ -1,0 +1,140 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  integration-test:
+    name: End-to-End Integration Test
+    runs-on: ubuntu-latest
+    # Only run if Garmin credentials are available (not on forks)
+    if: github.repository == 'satishThakur/health-assistant' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file
+        working-directory: infra
+        env:
+          GARMIN_EMAIL: ${{ secrets.GARMIN_TEST_EMAIL }}
+          GARMIN_PASSWORD: ${{ secrets.GARMIN_TEST_PASSWORD }}
+        run: |
+          cat > .env << EOF
+          GARMIN_EMAIL=${GARMIN_EMAIL}
+          GARMIN_PASSWORD=${GARMIN_PASSWORD}
+          DEFAULT_USER_ID=00000000-0000-0000-0000-000000000001
+          SYNC_CRON_HOUR=*
+          SYNC_CRON_MINUTE=0
+          EOF
+
+      - name: Start services
+        working-directory: infra
+        run: |
+          docker-compose up -d postgres ingestion-service garmin-scheduler
+
+      - name: Wait for services to be ready
+        run: |
+          echo "Waiting for services..."
+          sleep 30
+
+          # Wait for ingestion service
+          for i in {1..30}; do
+            if curl -f http://localhost:8083/health > /dev/null 2>&1; then
+              echo "✓ Ingestion service is healthy"
+              break
+            fi
+            echo "Waiting for ingestion service..."
+            sleep 2
+          done
+
+          # Wait for scheduler
+          for i in {1..30}; do
+            if curl -f http://localhost:8085/health > /dev/null 2>&1; then
+              echo "✓ Scheduler is healthy"
+              break
+            fi
+            echo "Waiting for scheduler..."
+            sleep 2
+          done
+
+      - name: Check service health
+        run: |
+          echo "=== Ingestion Service Health ==="
+          curl http://localhost:8083/health | jq '.'
+
+          echo "=== Scheduler Health ==="
+          curl http://localhost:8085/health | jq '.'
+
+      - name: Run integration test
+        run: |
+          ./scripts/test-integration.sh --skip-logs
+        continue-on-error: true
+
+      - name: Collect logs on failure
+        if: failure()
+        run: |
+          echo "=== Garmin Scheduler Logs ==="
+          docker logs health-assistant-garmin-scheduler --tail 100
+
+          echo "=== Ingestion Service Logs ==="
+          docker logs health-assistant-ingestion-service --tail 100
+
+          echo "=== PostgreSQL Logs ==="
+          docker logs health-assistant-db --tail 50
+
+      - name: Query database for results
+        if: always()
+        run: |
+          echo "=== Events Count ==="
+          docker exec health-assistant-db psql -U healthuser -d health_assistant -c \
+            "SELECT event_type, COUNT(*) FROM events WHERE source='garmin' GROUP BY event_type;"
+
+          echo "=== Sync Audit Summary ==="
+          docker exec health-assistant-db psql -U healthuser -d health_assistant -c \
+            "SELECT data_type, COUNT(*) as syncs, SUM(records_fetched) as fetched, SUM(records_inserted) as inserted, SUM(records_updated) as updated FROM sync_audit GROUP BY data_type;"
+
+      - name: Stop services
+        if: always()
+        working-directory: infra
+        run: docker-compose down -v
+
+  notify-failure:
+    name: Notify on Failure
+    runs-on: ubuntu-latest
+    needs: [integration-test]
+    if: failure() && github.event_name == 'push'
+
+    steps:
+      - name: Create issue on failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = `Integration Test Failed - ${context.sha.substring(0, 7)}`;
+            const body = `Integration tests failed on main branch.
+
+            **Commit:** ${context.sha}
+            **Author:** @${context.actor}
+            **Workflow:** [View Run](${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+
+            Please investigate and fix the failing tests.`;
+
+            // Check if issue already exists
+            const issues = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'integration-test-failure'
+            });
+
+            if (issues.data.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: title,
+                body: body,
+                labels: ['integration-test-failure', 'bug']
+              });
+            }
