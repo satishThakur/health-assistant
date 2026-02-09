@@ -34,10 +34,13 @@ func main() {
 	// Create repositories
 	eventRepo := db.NewEventRepository(database)
 	auditRepo := db.NewAuditRepository(database)
+	checkinRepo := db.NewCheckinRepository(database)
 
 	// Create handlers
 	garminHandler := handlers.NewGarminIngestionHandler(eventRepo)
 	auditHandler := handlers.NewAuditHandler(auditRepo)
+	checkinHandler := handlers.NewCheckinHandler(eventRepo, checkinRepo)
+	dashboardHandler := handlers.NewDashboardHandler(checkinRepo)
 
 	// Setup routes
 	mux := http.NewServeMux()
@@ -74,6 +77,16 @@ func main() {
 	mux.HandleFunc("/api/v1/audit/sync/recent", auditHandler.HandleGetRecentSyncAudits)
 	mux.HandleFunc("/api/v1/audit/sync/by-type", auditHandler.HandleGetSyncAuditsByType)
 	mux.HandleFunc("/api/v1/audit/sync/stats", auditHandler.HandleGetSyncAuditStats)
+
+	// Check-in endpoints
+	mux.HandleFunc("/api/v1/checkin", checkinHandler.HandleCheckinSubmission)
+	mux.HandleFunc("/api/v1/checkin/latest", checkinHandler.HandleGetLatestCheckin)
+	mux.HandleFunc("/api/v1/checkin/history", checkinHandler.HandleGetCheckinHistory)
+
+	// Dashboard and trends endpoints
+	mux.HandleFunc("/api/v1/dashboard/today", dashboardHandler.HandleGetTodayDashboard)
+	mux.HandleFunc("/api/v1/trends/week", dashboardHandler.HandleGetWeekTrends)
+	mux.HandleFunc("/api/v1/insights/correlations", dashboardHandler.HandleGetCorrelations)
 
 	// Create HTTP server
 	port := ":8083"
