@@ -180,6 +180,82 @@ class IngestionClient:
             logger.error(f"Error posting stress data: {e}")
             return None
 
+    async def post_daily_stats(
+        self,
+        user_id: str,
+        target_date: date,
+        daily_stats_data: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Post daily stats to ingestion service.
+
+        Args:
+            user_id: User UUID
+            target_date: Date of the daily stats
+            daily_stats_data: Daily stats metrics dictionary
+
+        Returns:
+            Response dict with status and was_inserted, or None if failed
+        """
+        url = f"{self.base_url}/api/v1/garmin/ingest/daily-stats"
+        payload = {
+            "user_id": user_id,
+            "date": target_date.isoformat(),
+            "daily_stats_data": daily_stats_data,
+        }
+
+        try:
+            logger.info(f"Posting daily stats for user {user_id} on {target_date}")
+            response = await self.client.post(url, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Successfully posted daily stats: {result.get('action', 'unknown')}")
+            return result
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error posting daily stats: {e.response.status_code} - {e.response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error posting daily stats: {e}")
+            return None
+
+    async def post_body_battery(
+        self,
+        user_id: str,
+        target_date: date,
+        body_battery_data: Dict[str, Any],
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Post body battery data to ingestion service.
+
+        Args:
+            user_id: User UUID
+            target_date: Date of the body battery data
+            body_battery_data: Body battery metrics dictionary
+
+        Returns:
+            Response dict with status and was_inserted, or None if failed
+        """
+        url = f"{self.base_url}/api/v1/garmin/ingest/body-battery"
+        payload = {
+            "user_id": user_id,
+            "date": target_date.isoformat(),
+            "body_battery_data": body_battery_data,
+        }
+
+        try:
+            logger.info(f"Posting body battery for user {user_id} on {target_date}")
+            response = await self.client.post(url, json=payload)
+            response.raise_for_status()
+            result = response.json()
+            logger.info(f"Successfully posted body battery: {result.get('action', 'unknown')}")
+            return result
+        except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error posting body battery: {e.response.status_code} - {e.response.text}")
+            return None
+        except Exception as e:
+            logger.error(f"Error posting body battery: {e}")
+            return None
+
     async def post_sync_audit(
         self,
         user_id: str,

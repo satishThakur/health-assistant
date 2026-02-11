@@ -385,6 +385,158 @@ func transformStressToEvent(payload *validation.GarminStressPayload) (*models.Ev
 	}, nil
 }
 
+// HandleDailyStatsIngestion handles POST /api/v1/garmin/ingest/daily-stats
+func (h *GarminIngestionHandler) HandleDailyStatsIngestion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse and validate request
+	var payload validation.GarminDailyStatsPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		log.Printf("Invalid JSON in daily stats request: %v", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := validation.ValidateDailyStatsPayload(&payload); err != nil {
+		log.Printf("Validation failed for daily stats: %v", err)
+		http.Error(w, fmt.Sprintf("Validation error: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Transform to event
+	event, err := transformDailyStatsToEvent(&payload)
+	if err != nil {
+		log.Printf("Failed to transform daily stats: %v", err)
+		http.Error(w, "Failed to process daily stats", http.StatusInternalServerError)
+		return
+	}
+
+	// Store in database
+	result, err := h.eventRepo.InsertEvent(r.Context(), event)
+	if err != nil {
+		log.Printf("Failed to store daily stats: %v", err)
+		http.Error(w, "Failed to store event", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Successfully inserted daily stats for user %s on %s", payload.UserID, payload.Date)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":       "success",
+		"was_inserted": result.WasInserted,
+	})
+}
+
+// HandleBodyBatteryIngestion handles POST /api/v1/garmin/ingest/body-battery
+func (h *GarminIngestionHandler) HandleBodyBatteryIngestion(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse and validate request
+	var payload validation.GarminBodyBatteryPayload
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		log.Printf("Invalid JSON in body battery request: %v", err)
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if err := validation.ValidateBodyBatteryPayload(&payload); err != nil {
+		log.Printf("Validation failed for body battery: %v", err)
+		http.Error(w, fmt.Sprintf("Validation error: %v", err), http.StatusBadRequest)
+		return
+	}
+
+	// Transform to event
+	event, err := transformBodyBatteryToEvent(&payload)
+	if err != nil {
+		log.Printf("Failed to transform body battery: %v", err)
+		http.Error(w, "Failed to process body battery", http.StatusInternalServerError)
+		return
+	}
+
+	// Store in database
+	result, err := h.eventRepo.InsertEvent(r.Context(), event)
+	if err != nil {
+		log.Printf("Failed to store body battery: %v", err)
+		http.Error(w, "Failed to store event", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Successfully inserted body battery for user %s on %s", payload.UserID, payload.Date)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"status":       "success",
+		"was_inserted": result.WasInserted,
+	})
+}
+
+func transformDailyStatsToEvent(payload *validation.GarminDailyStatsPayload) (*models.Event, error) {
+	// Use date at midnight for daily stats
+	eventTime, _ := time.Parse("2006-01-02", payload.Date)
+
+	// Build daily stats structure
+	dailyStats := models.GarminDailyStats{
+		Steps:                    int(getFloat64Value(payload.DailyStatsData, "steps")),
+		Calories:                 int(getFloat64Value(payload.DailyStatsData, "calories")),
+		DistanceMeters:           int(getFloat64Value(payload.DailyStatsData, "distance_meters")),
+		ActiveCalories:           int(getFloat64Value(payload.DailyStatsData, "active_calories")),
+		BMRCalories:              int(getFloat64Value(payload.DailyStatsData, "bmr_calories")),
+		MinHeartRate:             int(getFloat64Value(payload.DailyStatsData, "min_heart_rate")),
+		MaxHeartRate:             int(getFloat64Value(payload.DailyStatsData, "max_heart_rate")),
+		RestingHeartRate:         int(getFloat64Value(payload.DailyStatsData, "resting_heart_rate")),
+		ModerateIntensityMinutes: int(getFloat64Value(payload.DailyStatsData, "moderate_intensity_minutes")),
+		VigorousIntensityMinutes: int(getFloat64Value(payload.DailyStatsData, "vigorous_intensity_minutes")),
+	}
+
+	// Marshal to JSON
+	dataJSON, err := json.Marshal(dailyStats)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal daily stats: %w", err)
+	}
+
+	return &models.Event{
+		Time:      eventTime,
+		UserID:    payload.UserID,
+		EventType: models.EventTypeGarminDailyStats,
+		Source:    models.SourceGarmin,
+		Data:      dataJSON,
+	}, nil
+}
+
+func transformBodyBatteryToEvent(payload *validation.GarminBodyBatteryPayload) (*models.Event, error) {
+	// Use date at midnight for body battery
+	eventTime, _ := time.Parse("2006-01-02", payload.Date)
+
+	// Build body battery structure
+	bodyBattery := models.GarminBodyBattery{
+		Charged:      int(getFloat64Value(payload.BodyBatteryData, "charged")),
+		Drained:      int(getFloat64Value(payload.BodyBatteryData, "drained")),
+		HighestValue: int(getFloat64Value(payload.BodyBatteryData, "highest_value")),
+		LowestValue:  int(getFloat64Value(payload.BodyBatteryData, "lowest_value")),
+	}
+
+	// Marshal to JSON
+	dataJSON, err := json.Marshal(bodyBattery)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal body battery: %w", err)
+	}
+
+	return &models.Event{
+		Time:      eventTime,
+		UserID:    payload.UserID,
+		EventType: models.EventTypeGarminBodyBattery,
+		Source:    models.SourceGarmin,
+		Data:      dataJSON,
+	}, nil
+}
+
 // Helper functions
 
 func getFloat64Value(data map[string]interface{}, key string) float64 {

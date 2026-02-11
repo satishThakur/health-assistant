@@ -33,6 +33,20 @@ type GarminStressPayload struct {
 	StressData map[string]interface{} `json:"stress_data"`
 }
 
+// GarminDailyStatsPayload represents the incoming daily stats from Python scheduler
+type GarminDailyStatsPayload struct {
+	UserID         string                 `json:"user_id"`
+	Date           string                 `json:"date"`
+	DailyStatsData map[string]interface{} `json:"daily_stats_data"`
+}
+
+// GarminBodyBatteryPayload represents the incoming body battery data from Python scheduler
+type GarminBodyBatteryPayload struct {
+	UserID          string                 `json:"user_id"`
+	Date            string                 `json:"date"`
+	BodyBatteryData map[string]interface{} `json:"body_battery_data"`
+}
+
 // ValidateSleepPayload validates the sleep data payload
 func ValidateSleepPayload(payload *GarminSleepPayload) error {
 	if payload.UserID == "" {
@@ -166,6 +180,64 @@ func ValidateStressPayload(payload *GarminStressPayload) error {
 				return errors.New("average_stress_level must be between 0 and 100")
 			}
 		}
+	}
+
+	return nil
+}
+
+// ValidateDailyStatsPayload validates the daily stats payload
+func ValidateDailyStatsPayload(payload *GarminDailyStatsPayload) error {
+	if payload.UserID == "" {
+		return errors.New("user_id is required")
+	}
+
+	if payload.Date == "" {
+		return errors.New("date is required")
+	}
+
+	// Validate date format
+	if _, err := time.Parse("2006-01-02", payload.Date); err != nil {
+		return errors.New("date must be in YYYY-MM-DD format")
+	}
+
+	if payload.DailyStatsData == nil {
+		return errors.New("daily_stats_data is required")
+	}
+
+	// At least steps should be present
+	steps, ok := getFloat64(payload.DailyStatsData, "steps")
+	if !ok || steps < 0 {
+		return errors.New("steps must be a non-negative number")
+	}
+
+	return nil
+}
+
+// ValidateBodyBatteryPayload validates the body battery payload
+func ValidateBodyBatteryPayload(payload *GarminBodyBatteryPayload) error {
+	if payload.UserID == "" {
+		return errors.New("user_id is required")
+	}
+
+	if payload.Date == "" {
+		return errors.New("date is required")
+	}
+
+	// Validate date format
+	if _, err := time.Parse("2006-01-02", payload.Date); err != nil {
+		return errors.New("date must be in YYYY-MM-DD format")
+	}
+
+	if payload.BodyBatteryData == nil {
+		return errors.New("body_battery_data is required")
+	}
+
+	// Validate charged/drained values
+	charged, okCharged := getFloat64(payload.BodyBatteryData, "charged")
+	drained, okDrained := getFloat64(payload.BodyBatteryData, "drained")
+
+	if (!okCharged && !okDrained) || (charged < 0 && drained < 0) {
+		return errors.New("charged or drained must be valid non-negative numbers")
 	}
 
 	return nil

@@ -140,6 +140,20 @@ class GarminSyncScheduler:
             user_id=user_id,
         )
 
+        # Sync daily stats with audit
+        await self._sync_data_type(
+            data_type="daily_stats",
+            target_date=target_date,
+            user_id=user_id,
+        )
+
+        # Sync body battery with audit
+        await self._sync_data_type(
+            data_type="body_battery",
+            target_date=target_date,
+            user_id=user_id,
+        )
+
     async def _sync_data_type(self, data_type: str, target_date: date, user_id: str):
         """
         Sync a specific data type with full audit tracking.
@@ -224,6 +238,34 @@ class GarminSyncScheduler:
                         user_id=user_id,
                         target_date=target_date,
                         stress_data=data,
+                    )
+                    if response and response.get("was_inserted"):
+                        records_inserted = 1
+                    else:
+                        records_updated = 1
+
+            elif data_type == "daily_stats":
+                data = self.garmin_client.get_daily_stats(target_date)
+                if data:
+                    records_fetched = 1
+                    response = await self.ingestion_client.post_daily_stats(
+                        user_id=user_id,
+                        target_date=target_date,
+                        daily_stats_data=data,
+                    )
+                    if response and response.get("was_inserted"):
+                        records_inserted = 1
+                    else:
+                        records_updated = 1
+
+            elif data_type == "body_battery":
+                data = self.garmin_client.get_body_battery(target_date)
+                if data:
+                    records_fetched = 1
+                    response = await self.ingestion_client.post_body_battery(
+                        user_id=user_id,
+                        target_date=target_date,
+                        body_battery_data=data,
                     )
                     if response and response.get("was_inserted"):
                         records_inserted = 1

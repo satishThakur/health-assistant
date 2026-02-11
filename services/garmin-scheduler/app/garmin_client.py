@@ -157,7 +157,7 @@ class GarminClientWrapper:
         Fetch HRV data for a specific date and transform to ingestion format.
 
         Returns:
-            Dict with keys: average_hrv, max_hrv, min_hrv (if available)
+            Dict with keys: last_night_avg, weekly_avg, status
         """
         if not self.client:
             raise RuntimeError("Client not connected. Call connect() first.")
@@ -166,27 +166,21 @@ class GarminClientWrapper:
             date_str = target_date.isoformat()
             logger.info(f"Fetching HRV data for {date_str}")
 
-            # HRV is typically part of sleep data or stress data
-            # Try to get from sleep data first
-            sleep_data = self.client.get_sleep_data(date_str)
-            if sleep_data:
-                daily_sleep = sleep_data.get("dailySleepDTO", {})
-                if "averageHRV" in daily_sleep:
-                    transformed = {
-                        "average_hrv": daily_sleep.get("averageHRV"),
-                    }
-                    logger.info(f"Successfully fetched HRV data for {date_str}: {transformed['average_hrv']}")
-                    return transformed
+            # Use dedicated HRV method
+            hrv_data = self.client.get_hrv_data(date_str)
+            if hrv_data:
+                transformed = {}
 
-            # Try stress data as alternative source
-            try:
-                stress_data = self.client.get_stress_data(date_str)
-                if stress_data and "avgStressLevel" in stress_data:
-                    # Some devices provide HRV through stress API
-                    logger.info(f"No HRV data in sleep data for {date_str}")
-                    return None
-            except:
-                pass
+                if "lastNightAvg" in hrv_data:
+                    transformed["last_night_avg"] = hrv_data.get("lastNightAvg")
+                if "weeklyAvg" in hrv_data:
+                    transformed["weekly_avg"] = hrv_data.get("weeklyAvg")
+                if "hrvStatus" in hrv_data:
+                    transformed["status"] = hrv_data.get("hrvStatus")
+
+                if transformed:
+                    logger.info(f"Successfully fetched HRV data for {date_str}")
+                    return transformed
 
             logger.info(f"No HRV data available for {date_str}")
             return None
@@ -233,4 +227,105 @@ class GarminClientWrapper:
 
         except Exception as e:
             logger.error(f"Error fetching stress data for {target_date}: {e}")
+            return None
+
+    def get_daily_stats(self, target_date: date) -> Optional[Dict[str, Any]]:
+        """
+        Fetch daily stats for a specific date and transform to ingestion format.
+
+        Returns:
+            Dict with keys: steps, calories, distance_meters, active_minutes,
+            resting_heart_rate, max_heart_rate
+        """
+        if not self.client:
+            raise RuntimeError("Client not connected. Call connect() first.")
+
+        try:
+            date_str = target_date.isoformat()
+            logger.info(f"Fetching daily stats for {date_str}")
+
+            stats = self.client.get_stats(date_str)
+            if not stats:
+                logger.info(f"No daily stats available for {date_str}")
+                return None
+
+            # Transform to ingestion format
+            transformed = {}
+
+            if "totalSteps" in stats:
+                transformed["steps"] = stats.get("totalSteps")
+            if "totalKilocalories" in stats:
+                transformed["calories"] = stats.get("totalKilocalories")
+            if "totalDistanceMeters" in stats:
+                transformed["distance_meters"] = stats.get("totalDistanceMeters")
+            if "activeKilocalories" in stats:
+                transformed["active_calories"] = stats.get("activeKilocalories")
+            if "bmrKilocalories" in stats:
+                transformed["bmr_calories"] = stats.get("bmrKilocalories")
+            if "minHeartRate" in stats:
+                transformed["min_heart_rate"] = stats.get("minHeartRate")
+            if "maxHeartRate" in stats:
+                transformed["max_heart_rate"] = stats.get("maxHeartRate")
+            if "restingHeartRate" in stats:
+                transformed["resting_heart_rate"] = stats.get("restingHeartRate")
+            if "moderateIntensityMinutes" in stats:
+                transformed["moderate_intensity_minutes"] = stats.get("moderateIntensityMinutes")
+            if "vigorousIntensityMinutes" in stats:
+                transformed["vigorous_intensity_minutes"] = stats.get("vigorousIntensityMinutes")
+
+            if transformed:
+                logger.info(f"Successfully fetched daily stats for {date_str}: {transformed.get('steps', 0)} steps")
+                return transformed
+
+            logger.info(f"No daily stats available for {date_str}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error fetching daily stats for {target_date}: {e}")
+            return None
+
+    def get_body_battery(self, target_date: date) -> Optional[Dict[str, Any]]:
+        """
+        Fetch body battery data for a specific date and transform to ingestion format.
+
+        Returns:
+            Dict with keys: charged, drained, highest_value, lowest_value
+        """
+        if not self.client:
+            raise RuntimeError("Client not connected. Call connect() first.")
+
+        try:
+            date_str = target_date.isoformat()
+            logger.info(f"Fetching body battery for {date_str}")
+
+            # Body battery API returns data for a date range
+            body_battery = self.client.get_body_battery(date_str, date_str)
+            if not body_battery or len(body_battery) == 0:
+                logger.info(f"No body battery data available for {date_str}")
+                return None
+
+            # Get the first day's data
+            day_data = body_battery[0] if isinstance(body_battery, list) else body_battery
+
+            # Transform to ingestion format
+            transformed = {}
+
+            if "charged" in day_data:
+                transformed["charged"] = day_data.get("charged")
+            if "drained" in day_data:
+                transformed["drained"] = day_data.get("drained")
+            if "highest" in day_data:
+                transformed["highest_value"] = day_data.get("highest")
+            if "lowest" in day_data:
+                transformed["lowest_value"] = day_data.get("lowest")
+
+            if transformed:
+                logger.info(f"Successfully fetched body battery for {date_str}")
+                return transformed
+
+            logger.info(f"No body battery data available for {date_str}")
+            return None
+
+        except Exception as e:
+            logger.error(f"Error fetching body battery for {target_date}: {e}")
             return None

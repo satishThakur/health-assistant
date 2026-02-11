@@ -18,14 +18,16 @@ type Event struct {
 
 // EventType constants
 const (
-	EventTypeGarminSleep      = "garmin_sleep"
-	EventTypeGarminActivity   = "garmin_activity"
-	EventTypeGarminHRV        = "garmin_hrv"
-	EventTypeGarminStress     = "garmin_stress"
+	EventTypeGarminSleep       = "garmin_sleep"
+	EventTypeGarminActivity    = "garmin_activity"
+	EventTypeGarminHRV         = "garmin_hrv"
+	EventTypeGarminStress      = "garmin_stress"
+	EventTypeGarminDailyStats  = "garmin_daily_stats"
+	EventTypeGarminBodyBattery = "garmin_body_battery"
 	EventTypeSubjectiveFeeling = "subjective_feeling"
-	EventTypeMeal             = "meal"
-	EventTypeSupplement       = "supplement"
-	EventTypeBiomarker        = "biomarker"
+	EventTypeMeal              = "meal"
+	EventTypeSupplement        = "supplement"
+	EventTypeBiomarker         = "biomarker"
 )
 
 // Source constants
@@ -100,4 +102,26 @@ type Biomarker struct {
 	Unit           string  `json:"unit"`
 	ReferenceRange string  `json:"reference_range"`
 	LabName        string  `json:"lab_name,omitempty"`
+}
+
+// GarminDailyStats represents daily activity stats from Garmin
+type GarminDailyStats struct {
+	Steps                     int `json:"steps"`
+	Calories                  int `json:"calories"`
+	DistanceMeters            int `json:"distance_meters"`
+	ActiveCalories            int `json:"active_calories,omitempty"`
+	BMRCalories               int `json:"bmr_calories,omitempty"`
+	MinHeartRate              int `json:"min_heart_rate,omitempty"`
+	MaxHeartRate              int `json:"max_heart_rate,omitempty"`
+	RestingHeartRate          int `json:"resting_heart_rate,omitempty"`
+	ModerateIntensityMinutes  int `json:"moderate_intensity_minutes,omitempty"`
+	VigorousIntensityMinutes  int `json:"vigorous_intensity_minutes,omitempty"`
+}
+
+// GarminBodyBattery represents body battery energy data from Garmin
+type GarminBodyBattery struct {
+	Charged      int `json:"charged"`
+	Drained      int `json:"drained"`
+	HighestValue int `json:"highest_value,omitempty"`
+	LowestValue  int `json:"lowest_value,omitempty"`
 }

@@ -71,6 +71,8 @@ func main() {
 	mux.HandleFunc("/api/v1/garmin/ingest/activity", garminHandler.HandleActivityIngestion)
 	mux.HandleFunc("/api/v1/garmin/ingest/hrv", garminHandler.HandleHRVIngestion)
 	mux.HandleFunc("/api/v1/garmin/ingest/stress", garminHandler.HandleStressIngestion)
+	mux.HandleFunc("/api/v1/garmin/ingest/daily-stats", garminHandler.HandleDailyStatsIngestion)
+	mux.HandleFunc("/api/v1/garmin/ingest/body-battery", garminHandler.HandleBodyBatteryIngestion)
 
 	// Audit endpoints
 	mux.HandleFunc("/api/v1/audit/sync", auditHandler.HandlePostSyncAudit)
