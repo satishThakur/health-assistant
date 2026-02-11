@@ -20,6 +20,12 @@ go.work
 vendor/
 bin/
 dist/
+# Go compiled binaries in backend
+backend/api-gateway
+backend/data-service
+backend/experiment-service
+backend/ingestion-service
+backend/model-service
 
 # Python
 __pycache__/
@@ -48,6 +54,11 @@ wheels/
 venv/
 ENV/
 env/
+
+# Test/POC files
+services/garmin-scheduler/test_*
+services/garmin-scheduler/get_garmin_tokens.py
+poc/garmin-test/test_*
 .venv
 .pytest_cache/
 .coverage
