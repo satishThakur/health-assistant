@@ -35,8 +35,7 @@ func (r *EventRepository) InsertEvent(ctx context.Context, event *models.Event) 
 			source = EXCLUDED.source,
 			data = EXCLUDED.data,
 			metadata = EXCLUDED.metadata,
-			confidence = EXCLUDED.confidence,
-			updated_at = CURRENT_TIMESTAMP
+			confidence = EXCLUDED.confidence
 		RETURNING (xmax = 0) AS was_inserted
 	`
 

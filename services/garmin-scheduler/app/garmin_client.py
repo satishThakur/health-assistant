@@ -22,14 +22,27 @@ class GarminClientWrapper:
         """Authenticate with Garmin Connect."""
         try:
             logger.info("Connecting to Garmin Connect...")
+            logger.info(f"Email: {self.email}")
+            logger.info(f"Password length: {len(self.password)} chars")
+            logger.info(f"Password starts with: {self.password[:2] if len(self.password) >= 2 else 'N/A'}")
+
             self.client = Garmin(self.email, self.password)
+            logger.info("Garmin client created, attempting login...")
+
             self.client.login()
+
             logger.info("Successfully connected to Garmin Connect")
-        except GarminConnectAuthenticationError:
-            logger.error("Authentication failed - check credentials")
+            logger.info(f"Display name: {self.client.display_name if hasattr(self.client, 'display_name') else 'N/A'}")
+
+        except GarminConnectAuthenticationError as e:
+            logger.error(f"Authentication failed - check credentials: {e}")
             raise
         except GarminConnectConnectionError as e:
             logger.error(f"Connection error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error during login: {type(e).__name__}: {e}")
+            logger.error(f"Full error: {repr(e)}")
             raise
 
     def get_sleep_data(self, target_date: date) -> Optional[Dict[str, Any]]:
