@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_view.dart';
+import '../../dashboard/domain/dashboard_model.dart';
 import '../../dashboard/providers/dashboard_provider.dart';
 import 'widgets/insight_card.dart';
 
@@ -27,7 +28,7 @@ class InsightsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInsights(BuildContext context, List correlations) {
+  Widget _buildInsights(BuildContext context, List<CorrelationInsight> correlations) {
     if (correlations.isEmpty) {
       return Center(
         child: Padding(

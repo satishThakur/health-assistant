@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_view.dart';
+import '../domain/dashboard_model.dart';
 import '../providers/dashboard_provider.dart';
 import 'widgets/trend_chart.dart';
 
@@ -27,7 +28,7 @@ class TrendsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTrends(BuildContext context, List trends) {
+  Widget _buildTrends(BuildContext context, List<TrendData> trends) {
     if (trends.isEmpty) {
       return Center(
         child: Column(
@@ -71,7 +72,7 @@ class TrendsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildInsightsSummary(BuildContext context, List trends) {
+  Widget _buildInsightsSummary(BuildContext context, List<TrendData> trends) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import '../../../shared/widgets/loading_indicator.dart';
 import '../../../shared/widgets/error_view.dart';
+import '../domain/dashboard_model.dart';
 import '../providers/dashboard_provider.dart';
 import 'widgets/checkin_card.dart';
 import 'widgets/sleep_card.dart';
