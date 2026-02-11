@@ -27,10 +27,12 @@ type DashboardData struct {
 
 // GarminSummary represents aggregated Garmin data for today
 type GarminSummary struct {
-	Sleep    *models.GarminSleep    `json:"sleep,omitempty"`
-	Activity *models.GarminActivity `json:"activity,omitempty"`
-	HRV      *HRVData               `json:"hrv,omitempty"`
-	Stress   *StressData            `json:"stress,omitempty"`
+	Sleep       *models.GarminSleep       `json:"sleep,omitempty"`
+	Activity    *models.GarminActivity    `json:"activity,omitempty"`
+	HRV         *HRVData                  `json:"hrv,omitempty"`
+	Stress      *StressData               `json:"stress,omitempty"`
+	DailyStats  *models.GarminDailyStats  `json:"daily_stats,omitempty"`
+	BodyBattery *models.GarminBodyBattery `json:"body_battery,omitempty"`
 }
 
 // HRVData represents HRV information
@@ -148,6 +150,18 @@ func (r *CheckinRepository) GetTodayDashboard(ctx context.Context, userID string
 						Level:   level,
 					}
 				}
+			}
+
+		case models.EventTypeGarminDailyStats:
+			var dailyStats models.GarminDailyStats
+			if err := json.Unmarshal(data, &dailyStats); err == nil {
+				dashboard.Garmin.DailyStats = &dailyStats
+			}
+
+		case models.EventTypeGarminBodyBattery:
+			var bodyBattery models.GarminBodyBattery
+			if err := json.Unmarshal(data, &bodyBattery); err == nil {
+				dashboard.Garmin.BodyBattery = &bodyBattery
 			}
 		}
 	}

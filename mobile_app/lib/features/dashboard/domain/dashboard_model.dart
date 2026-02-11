@@ -26,11 +26,19 @@ class GarminData {
   final HRVData? hrv;
   final StressData? stress;
 
+  @JsonKey(name: 'daily_stats')
+  final DailyStatsData? dailyStats;
+
+  @JsonKey(name: 'body_battery')
+  final BodyBatteryData? bodyBattery;
+
   GarminData({
     this.sleep,
     this.activity,
     this.hrv,
     this.stress,
+    this.dailyStats,
+    this.bodyBattery,
   });
 
   factory GarminData.fromJson(Map<String, dynamic> json) =>
@@ -139,6 +147,82 @@ class StressData {
       _$StressDataFromJson(json);
 
   Map<String, dynamic> toJson() => _$StressDataToJson(this);
+}
+
+@JsonSerializable()
+class DailyStatsData {
+  final int steps;
+  final int calories;
+
+  @JsonKey(name: 'distance_meters')
+  final int distanceMeters;
+
+  @JsonKey(name: 'active_calories')
+  final int? activeCalories;
+
+  @JsonKey(name: 'bmr_calories')
+  final int? bmrCalories;
+
+  @JsonKey(name: 'min_heart_rate')
+  final int? minHeartRate;
+
+  @JsonKey(name: 'max_heart_rate')
+  final int? maxHeartRate;
+
+  @JsonKey(name: 'resting_heart_rate')
+  final int? restingHeartRate;
+
+  @JsonKey(name: 'moderate_intensity_minutes')
+  final int? moderateIntensityMinutes;
+
+  @JsonKey(name: 'vigorous_intensity_minutes')
+  final int? vigorousIntensityMinutes;
+
+  DailyStatsData({
+    required this.steps,
+    required this.calories,
+    required this.distanceMeters,
+    this.activeCalories,
+    this.bmrCalories,
+    this.minHeartRate,
+    this.maxHeartRate,
+    this.restingHeartRate,
+    this.moderateIntensityMinutes,
+    this.vigorousIntensityMinutes,
+  });
+
+  double get distanceKm => distanceMeters / 1000.0;
+
+  factory DailyStatsData.fromJson(Map<String, dynamic> json) =>
+      _$DailyStatsDataFromJson(json);
+
+  Map<String, dynamic> toJson() => _$DailyStatsDataToJson(this);
+}
+
+@JsonSerializable()
+class BodyBatteryData {
+  final int charged;
+  final int drained;
+
+  @JsonKey(name: 'highest_value')
+  final int? highestValue;
+
+  @JsonKey(name: 'lowest_value')
+  final int? lowestValue;
+
+  BodyBatteryData({
+    required this.charged,
+    required this.drained,
+    this.highestValue,
+    this.lowestValue,
+  });
+
+  int get netEnergy => charged - drained;
+
+  factory BodyBatteryData.fromJson(Map<String, dynamic> json) =>
+      _$BodyBatteryDataFromJson(json);
+
+  Map<String, dynamic> toJson() => _$BodyBatteryDataToJson(this);
 }
 
 @JsonSerializable()
