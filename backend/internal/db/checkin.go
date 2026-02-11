@@ -135,7 +135,7 @@ func (r *CheckinRepository) GetTodayDashboard(ctx context.Context, userID string
 			// Stress data structure
 			var stressData map[string]interface{}
 			if err := json.Unmarshal(data, &stressData); err == nil {
-				if avg, ok := stressData["average"].(float64); ok {
+				if avg, ok := stressData["average_stress_level"].(float64); ok {
 					avgInt := int(avg)
 					level := "low"
 					if avgInt >= 26 && avgInt <= 50 {
