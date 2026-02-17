@@ -9,6 +9,8 @@ import '../providers/dashboard_provider.dart';
 import 'widgets/checkin_card.dart';
 import 'widgets/sleep_card.dart';
 import 'widgets/metric_card.dart';
+import 'widgets/activity_stats_card.dart';
+import 'widgets/body_battery_card.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -81,10 +83,28 @@ class DashboardScreen extends ConsumerWidget {
             const SizedBox(height: 16),
           ],
 
-          // Today's Metrics
-          if (dashboard.garmin != null) ...[
+          // Today's Activity Stats
+          if (dashboard.garmin?.dailyStats != null) ...[
             Text(
-              'Today\'s Metrics',
+              'Today\'s Activity',
+              style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 12),
+            ActivityStatsCard(stats: dashboard.garmin!.dailyStats!),
+            const SizedBox(height: 16),
+          ],
+
+          // Body Battery
+          if (dashboard.garmin?.bodyBattery != null) ...[
+            BodyBatteryCard(bodyBattery: dashboard.garmin!.bodyBattery!),
+            const SizedBox(height: 16),
+          ],
+
+          // HRV and Stress Metrics
+          if (dashboard.garmin?.hrv != null ||
+              dashboard.garmin?.stress != null) ...[
+            Text(
+              'Recovery Metrics',
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 12),
