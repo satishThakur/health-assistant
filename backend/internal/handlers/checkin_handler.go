@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/satishthakur/health-assistant/backend/internal/db"
+	"github.com/satishthakur/health-assistant/backend/internal/middleware"
 	"github.com/satishthakur/health-assistant/backend/internal/models"
 	"github.com/satishthakur/health-assistant/backend/internal/validation"
 )
@@ -53,9 +54,11 @@ func (h *CheckinHandler) HandleCheckinSubmission(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// TODO: Extract user_id from JWT token in Authorization header
-	// For now, using a default user_id
-	userID := "00000000-0000-0000-0000-000000000001"
+	userID := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
 
 	// Create SubjectiveFeeling from payload
 	feeling := models.SubjectiveFeeling{
@@ -121,8 +124,11 @@ func (h *CheckinHandler) HandleGetLatestCheckin(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// TODO: Extract user_id from JWT token
-	userID := "00000000-0000-0000-0000-000000000001"
+	userID := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
 
 	// Get today's events
 	now := time.Now()
@@ -178,8 +184,11 @@ func (h *CheckinHandler) HandleGetCheckinHistory(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// TODO: Extract user_id from JWT token
-	userID := "00000000-0000-0000-0000-000000000001"
+	userID := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
 
 	// Parse days parameter (default 30)
 	daysParam := r.URL.Query().Get("days")

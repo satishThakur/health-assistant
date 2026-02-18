@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/satishthakur/health-assistant/backend/internal/db"
+	"github.com/satishthakur/health-assistant/backend/internal/middleware"
 )
 
 // DashboardHandler handles dashboard and trends requests
@@ -28,8 +29,11 @@ func (h *DashboardHandler) HandleGetTodayDashboard(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// TODO: Extract user_id from JWT token
-	userID := "00000000-0000-0000-0000-000000000001"
+	userID := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
 
 	// Get today's dashboard data
 	dashboard, err := h.checkinRepo.GetTodayDashboard(r.Context(), userID)
@@ -54,8 +58,11 @@ func (h *DashboardHandler) HandleGetWeekTrends(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// TODO: Extract user_id from JWT token
-	userID := "00000000-0000-0000-0000-000000000001"
+	userID := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
 
 	// Get 7-day trends
 	trends, err := h.checkinRepo.GetWeekTrends(r.Context(), userID)
@@ -81,8 +88,11 @@ func (h *DashboardHandler) HandleGetCorrelations(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// TODO: Extract user_id from JWT token
-	userID := "00000000-0000-0000-0000-000000000001"
+	userID := middleware.UserIDFromContext(r.Context())
+	if userID == "" {
+		http.Error(w, `{"error":"Unauthorized"}`, http.StatusUnauthorized)
+		return
+	}
 
 	// Parse days parameter (default 30)
 	daysParam := r.URL.Query().Get("days")

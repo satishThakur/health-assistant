@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/auth/providers/auth_provider.dart';
+
 class ApiInterceptor extends Interceptor {
   final Ref ref;
 
@@ -8,12 +10,13 @@ class ApiInterceptor extends Interceptor {
 
   @override
   void onRequest(RequestOptions options, RequestInterceptorHandler handler) {
-    // TODO: Add authentication token when implemented
-    // final token = ref.read(authTokenProvider);
-    // if (token != null) {
-    //   options.headers['Authorization'] = 'Bearer $token';
-    // }
-
+    // Skip auth header for auth endpoints
+    if (!options.path.contains('/auth/')) {
+      final token = ref.read(authTokenProvider);
+      if (token != null) {
+        options.headers['Authorization'] = 'Bearer $token';
+      }
+    }
     handler.next(options);
   }
 
@@ -24,12 +27,9 @@ class ApiInterceptor extends Interceptor {
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) {
-    // Handle common errors
     if (err.response?.statusCode == 401) {
-      // TODO: Handle unauthorized (logout user)
-      // ref.read(authProvider.notifier).logout();
+      ref.read(authProvider.notifier).signOut();
     }
-
     handler.next(err);
   }
 }

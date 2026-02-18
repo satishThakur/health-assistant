@@ -10,9 +10,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/satishthakur/health-assistant/backend/internal/auth"
 	"github.com/satishthakur/health-assistant/backend/internal/config"
 	"github.com/satishthakur/health-assistant/backend/internal/db"
 	"github.com/satishthakur/health-assistant/backend/internal/handlers"
+	"github.com/satishthakur/health-assistant/backend/internal/middleware"
 )
 
 func main() {
@@ -20,6 +22,15 @@ func main() {
 
 	// Load configuration
 	cfg := config.Load()
+
+	// Initialize JWT token service
+	tokenService, err := auth.NewTokenService(cfg.Auth.JWTSecret, cfg.Auth.TokenDuration)
+	if err != nil {
+		log.Fatalf("Invalid JWT configuration: %v", err)
+	}
+
+	// Initialize Google verifier (empty clientID = dev mode, audience check skipped)
+	googleVerifier := auth.NewGoogleVerifier(os.Getenv("GOOGLE_CLIENT_ID"))
 
 	// Initialize database connection
 	ctx := context.Background()
@@ -35,19 +46,24 @@ func main() {
 	eventRepo := db.NewEventRepository(database)
 	auditRepo := db.NewAuditRepository(database)
 	checkinRepo := db.NewCheckinRepository(database)
+	userRepo := db.NewUserRepository(database)
 
 	// Create handlers
+	authHandler := handlers.NewAuthHandler(googleVerifier, userRepo, tokenService)
 	garminHandler := handlers.NewGarminIngestionHandler(eventRepo)
 	auditHandler := handlers.NewAuditHandler(auditRepo)
 	checkinHandler := handlers.NewCheckinHandler(eventRepo, checkinRepo)
 	dashboardHandler := handlers.NewDashboardHandler(checkinRepo)
 
+	// Build middleware
+	requireAuth := middleware.WithAuth(tokenService)
+	requireIngest := middleware.WithIngestSecret(os.Getenv("GARMIN_INGEST_SECRET"))
+
 	// Setup routes
 	mux := http.NewServeMux()
 
-	// Health check endpoint
+	// Health check endpoint (public)
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		// Check database health
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 		defer cancel()
 
@@ -66,29 +82,32 @@ func main() {
 		})
 	})
 
-	// Garmin ingestion endpoints
-	mux.HandleFunc("/api/v1/garmin/ingest/sleep", garminHandler.HandleSleepIngestion)
-	mux.HandleFunc("/api/v1/garmin/ingest/activity", garminHandler.HandleActivityIngestion)
-	mux.HandleFunc("/api/v1/garmin/ingest/hrv", garminHandler.HandleHRVIngestion)
-	mux.HandleFunc("/api/v1/garmin/ingest/stress", garminHandler.HandleStressIngestion)
-	mux.HandleFunc("/api/v1/garmin/ingest/daily-stats", garminHandler.HandleDailyStatsIngestion)
-	mux.HandleFunc("/api/v1/garmin/ingest/body-battery", garminHandler.HandleBodyBatteryIngestion)
+	// Auth endpoint (public — no auth middleware)
+	mux.HandleFunc("/api/v1/auth/google", authHandler.HandleGoogleAuth)
 
-	// Audit endpoints
-	mux.HandleFunc("/api/v1/audit/sync", auditHandler.HandlePostSyncAudit)
-	mux.HandleFunc("/api/v1/audit/sync/recent", auditHandler.HandleGetRecentSyncAudits)
-	mux.HandleFunc("/api/v1/audit/sync/by-type", auditHandler.HandleGetSyncAuditsByType)
-	mux.HandleFunc("/api/v1/audit/sync/stats", auditHandler.HandleGetSyncAuditStats)
+	// Garmin ingestion endpoints (ingest-secret protected, server-to-server)
+	mux.Handle("/api/v1/garmin/ingest/sleep", requireIngest(http.HandlerFunc(garminHandler.HandleSleepIngestion)))
+	mux.Handle("/api/v1/garmin/ingest/activity", requireIngest(http.HandlerFunc(garminHandler.HandleActivityIngestion)))
+	mux.Handle("/api/v1/garmin/ingest/hrv", requireIngest(http.HandlerFunc(garminHandler.HandleHRVIngestion)))
+	mux.Handle("/api/v1/garmin/ingest/stress", requireIngest(http.HandlerFunc(garminHandler.HandleStressIngestion)))
+	mux.Handle("/api/v1/garmin/ingest/daily-stats", requireIngest(http.HandlerFunc(garminHandler.HandleDailyStatsIngestion)))
+	mux.Handle("/api/v1/garmin/ingest/body-battery", requireIngest(http.HandlerFunc(garminHandler.HandleBodyBatteryIngestion)))
 
-	// Check-in endpoints
-	mux.HandleFunc("/api/v1/checkin", checkinHandler.HandleCheckinSubmission)
-	mux.HandleFunc("/api/v1/checkin/latest", checkinHandler.HandleGetLatestCheckin)
-	mux.HandleFunc("/api/v1/checkin/history", checkinHandler.HandleGetCheckinHistory)
+	// Audit endpoints (JWT protected)
+	mux.Handle("/api/v1/audit/sync", requireAuth(http.HandlerFunc(auditHandler.HandlePostSyncAudit)))
+	mux.Handle("/api/v1/audit/sync/recent", requireAuth(http.HandlerFunc(auditHandler.HandleGetRecentSyncAudits)))
+	mux.Handle("/api/v1/audit/sync/by-type", requireAuth(http.HandlerFunc(auditHandler.HandleGetSyncAuditsByType)))
+	mux.Handle("/api/v1/audit/sync/stats", requireAuth(http.HandlerFunc(auditHandler.HandleGetSyncAuditStats)))
 
-	// Dashboard and trends endpoints
-	mux.HandleFunc("/api/v1/dashboard/today", dashboardHandler.HandleGetTodayDashboard)
-	mux.HandleFunc("/api/v1/trends/week", dashboardHandler.HandleGetWeekTrends)
-	mux.HandleFunc("/api/v1/insights/correlations", dashboardHandler.HandleGetCorrelations)
+	// Check-in endpoints (JWT protected)
+	mux.Handle("/api/v1/checkin", requireAuth(http.HandlerFunc(checkinHandler.HandleCheckinSubmission)))
+	mux.Handle("/api/v1/checkin/latest", requireAuth(http.HandlerFunc(checkinHandler.HandleGetLatestCheckin)))
+	mux.Handle("/api/v1/checkin/history", requireAuth(http.HandlerFunc(checkinHandler.HandleGetCheckinHistory)))
+
+	// Dashboard and trends endpoints (JWT protected)
+	mux.Handle("/api/v1/dashboard/today", requireAuth(http.HandlerFunc(dashboardHandler.HandleGetTodayDashboard)))
+	mux.Handle("/api/v1/trends/week", requireAuth(http.HandlerFunc(dashboardHandler.HandleGetWeekTrends)))
+	mux.Handle("/api/v1/insights/correlations", requireAuth(http.HandlerFunc(dashboardHandler.HandleGetCorrelations)))
 
 	// Create HTTP server
 	port := ":8083"

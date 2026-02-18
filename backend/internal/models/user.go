@@ -10,6 +10,8 @@ type User struct {
 	ID               string          `json:"id" db:"id"`
 	Email            string          `json:"email" db:"email"`
 	PasswordHash     string          `json:"-" db:"password_hash"` // Never expose in JSON
+	GoogleID         string          `json:"-" db:"google_id"`
+	DisplayName      string          `json:"display_name,omitempty" db:"display_name"`
 	GarminOAuthToken json.RawMessage `json:"-" db:"garmin_oauth_token"`
 	Preferences      json.RawMessage `json:"preferences,omitempty" db:"preferences"`
 	CreatedAt        time.Time       `json:"created_at" db:"created_at"`
