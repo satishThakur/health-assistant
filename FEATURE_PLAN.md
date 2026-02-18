@@ -4,6 +4,9 @@
 
 **Vision:** Help users understand how their daily habits affect how they feel by combining subjective check-ins with objective Garmin data.
 
+**Last Updated:** 2026-02-18
+**Current Status:** Auth complete — platform config + offline support are next priorities
+
 ## 📱 Technology Stack
 
 ### Frontend
@@ -19,498 +22,188 @@
 - **PostgreSQL + TimescaleDB** (existing database)
 - **REST API** with JSON
 
+---
+
 ## 🚀 Phase 1: MVP (2-3 Weeks)
 
-### Week 1: Backend Foundation
+### Week 1: Backend Foundation ✅ COMPLETE
 
-**Day 1-2: Check-in API Endpoints**
-- `POST /api/v1/checkin` - Submit daily check-in
-- `GET /api/v1/checkin/latest` - Get today's check-in
-- `GET /api/v1/checkin/history?days=30` - Get check-in history
+**Day 1-2: Check-in API Endpoints** ✅
+- ✅ `POST /api/v1/checkin` - Submit daily check-in
+- ✅ `GET /api/v1/checkin/latest` - Get today's check-in
+- ✅ `GET /api/v1/checkin/history?days=30` - Get check-in history
 
-**Day 3-4: Dashboard API Endpoints**
-- `GET /api/v1/dashboard/today` - Today's summary (Garmin + check-in)
-- `GET /api/v1/dashboard/week` - 7-day trends
-- `GET /api/v1/health/summary?start=X&end=Y` - Date range data
+**Day 3-4: Dashboard API Endpoints** ✅
+- ✅ `GET /api/v1/dashboard/today` - Today's summary (Garmin + check-in)
+- ✅ `GET /api/v1/trends/week` - 7-day trends
+- ⬜ `GET /api/v1/health/summary?start=X&end=Y` - Date range data (not yet implemented)
 
-**Day 5: Simple Correlation Logic**
-- `GET /api/v1/insights/correlations?metric=sleep` - Basic correlations
-- Calculate averages grouped by conditions
-- Example: "When sleep > 7hrs, avg energy = 8.2"
+**Day 5: Simple Correlation Logic** ✅
+- ✅ `GET /api/v1/insights/correlations?days=30` - Basic correlations
+- ✅ Calculate averages grouped by conditions
+- ✅ Example: "When sleep > 7hrs, avg energy = 8.2"
 
-**Database Schema:**
-```sql
--- Already exists in events table!
--- Just need to use event_type = 'subjective_feeling'
+**Garmin Ingestion Endpoints** ✅
+- ✅ `POST /api/v1/garmin/ingest/sleep`
+- ✅ `POST /api/v1/garmin/ingest/activity`
+- ✅ `POST /api/v1/garmin/ingest/hrv`
+- ✅ `POST /api/v1/garmin/ingest/stress`
+- ✅ `POST /api/v1/garmin/ingest/daily-stats`
+- ✅ `POST /api/v1/garmin/ingest/body-battery`
 
--- Example:
-{
-  "time": "2026-01-29T08:00:00Z",
-  "user_id": "uuid",
-  "event_type": "subjective_feeling",
-  "source": "manual",
-  "data": {
-    "energy": 8,
-    "mood": 7,
-    "focus": 9,
-    "physical": 7,
-    "notes": "Felt great after morning run"
-  }
-}
+**Audit / Observability** ✅
+- ✅ Sync audit endpoints (POST, GET recent, GET by type, GET stats)
+
+**Authentication** ✅ COMPLETE
+- ✅ Google Sign-In → JWT issued by backend (`/api/v1/auth/google`)
+- ✅ JWT middleware wires real `user_id` into all handlers
+- ✅ Garmin ingest routes protected by `X-Ingest-Secret` header
+- ✅ Token stored in Keychain (iOS) / Keystore (Android) via flutter_secure_storage
+
+**Database Schema:** ✅ Uses existing `events` table with `event_type = 'subjective_feeling'`
+
+---
+
+### Week 2: Flutter App Foundation ✅ COMPLETE
+
+**Day 1-2: Project Setup** ✅
+- ✅ Flutter project structure created (`mobile_app/`)
+- ✅ Riverpod for state management
+- ✅ Dio API client configured with interceptors
+- ✅ go_router routing set up
+- ✅ Design system (theme, colors, typography)
+
+**Day 3-4: Authentication & Onboarding** ✅ COMPLETE
+- ✅ Login screen (Google Sign-In)
+- ✅ JWT authentication (backend + Flutter)
+- ❌ Onboarding flow
+- ❌ Notification permission request
+
+**Day 5: Core Features - Check-in Screen** ✅
+- ✅ Check-in form (4 sliders: energy, mood, focus, physical)
+- ✅ Optional notes field
+- ✅ Submit to backend
+- ❌ Celebration animation on submit (not yet added)
+
+---
+
+### Week 3: Dashboard & Insights ✅ MOSTLY COMPLETE
+
+**Day 1-2: Today's Dashboard** ✅
+- ✅ Today's check-in card
+- ✅ Last night's sleep data (duration, score, deep/light/REM)
+- ✅ HRV average metric card
+- ✅ Stress level metric card
+- ✅ Daily activity stats card (steps, calories, active minutes)
+- ✅ Body Battery card
+- ✅ Navigation cards → Trends, Insights
+
+**Day 3-4: 7-Day Trends** ✅
+- ✅ Trends screen with TrendChart widget
+- ✅ Quick insights summary (days tracked, consistency)
+- ⬜ Line charts for energy/mood specifically (TrendChart in place, depth TBD)
+- ⬜ Best/worst day identification (not yet implemented)
+
+**Day 5: Simple Insights** ✅
+- ✅ Insights screen showing correlation cards
+- ✅ Empty state: "Not enough data yet" with guidance
+- ✅ InsightCard widget
+- ⬜ Progressive insight unlocking (basic structure in place, not fully wired)
+
+---
+
+## 📐 App Structure — Current State
+
 ```
-
-### Week 2: Flutter App Foundation
-
-**Day 1-2: Project Setup**
-- Create Flutter project structure
-- Set up Riverpod for state management
-- Configure API client (Dio)
-- Set up routing (go_router)
-- Design system (theme, colors, typography)
-
-**Day 3-4: Authentication & Onboarding**
-- Login screen
-- Simple JWT authentication
-- Onboarding flow (explain the concept)
-- Request notification permissions
-
-**Day 5: Core Features - Check-in Screen**
-- Morning check-in form (4 sliders: energy, mood, focus, physical)
-- Optional notes field
-- Submit and store locally + sync to backend
-- Celebration animation on submit
-
-### Week 3: Dashboard & Insights
-
-**Day 1-2: Today's Dashboard**
-- Show today's check-in
-- Display last night's Garmin data:
-  - Sleep duration & score
-  - HRV average
-  - Activity summary
-  - Stress level
-- Beautiful card-based UI
-
-**Day 3-4: 7-Day Trends**
-- Line charts for energy/mood over 7 days
-- Bar chart for sleep duration
-- HRV trend
-- Identify best/worst days
-
-**Day 5: Simple Insights**
-- Show correlation insights:
-  - "Your energy is 15% higher when you sleep 7+ hours"
-  - "You're most focused after active days"
-  - "Your mood improves with lower stress"
-- Progressive insights (unlock as data grows)
-
-## 📐 App Structure
-
-```
-lib/
-├── main.dart
-├── app.dart
+mobile_app/lib/
+├── main.dart                          ✅
+├── app.dart                           ✅
 ├── core/
 │   ├── config/
-│   │   ├── app_config.dart
-│   │   └── theme.dart
+│   │   ├── app_config.dart            ✅
+│   │   └── theme.dart                 ✅
 │   ├── network/
-│   │   ├── api_client.dart
-│   │   ├── api_endpoints.dart
-│   │   └── interceptors.dart
-│   └── utils/
-│       ├── date_utils.dart
-│       └── validators.dart
+│   │   ├── api_client.dart            ✅
+│   │   ├── api_endpoints.dart         ✅
+│   │   └── api_interceptor.dart       ✅
+│   └── routing/
+│       └── app_router.dart            ✅
 ├── features/
-│   ├── auth/
-│   │   ├── data/
-│   │   │   ├── auth_repository.dart
-│   │   │   └── auth_api.dart
-│   │   ├── domain/
-│   │   │   └── user.dart
-│   │   ├── presentation/
-│   │   │   ├── login_screen.dart
-│   │   │   └── widgets/
-│   │   └── providers/
-│   │       └── auth_provider.dart
+│   ├── auth/                          ✅ (domain/data/providers/presentation)
 │   ├── checkin/
-│   │   ├── data/
-│   │   │   ├── checkin_repository.dart
-│   │   │   └── checkin_api.dart
-│   │   ├── domain/
-│   │   │   └── checkin_model.dart
-│   │   ├── presentation/
-│   │   │   ├── checkin_screen.dart
-│   │   │   └── widgets/
-│   │   │       ├── feeling_slider.dart
-│   │   │       └── submit_button.dart
-│   │   └── providers/
-│   │       └── checkin_provider.dart
+│   │   ├── data/                      ✅
+│   │   ├── domain/                    ✅
+│   │   ├── presentation/              ✅ (checkin_screen + feeling_slider)
+│   │   └── providers/                 ✅
 │   ├── dashboard/
-│   │   ├── data/
-│   │   │   ├── dashboard_repository.dart
-│   │   │   └── health_api.dart
-│   │   ├── domain/
-│   │   │   ├── garmin_summary.dart
-│   │   │   └── daily_summary.dart
-│   │   ├── presentation/
-│   │   │   ├── dashboard_screen.dart
-│   │   │   ├── trends_screen.dart
-│   │   │   └── widgets/
-│   │   │       ├── metric_card.dart
-│   │   │       ├── sleep_card.dart
-│   │   │       └── trend_chart.dart
-│   │   └── providers/
-│   │       └── dashboard_provider.dart
+│   │   ├── data/                      ✅
+│   │   ├── domain/                    ✅
+│   │   ├── presentation/              ✅ (dashboard, trends screens + all widgets)
+│   │   └── providers/                 ✅
 │   └── insights/
-│       ├── data/
-│       │   └── insights_repository.dart
-│       ├── domain/
-│       │   └── correlation.dart
-│       ├── presentation/
-│       │   ├── insights_screen.dart
-│       │   └── widgets/
-│       │       └── insight_card.dart
-│       └── providers/
-│           └── insights_provider.dart
+│       └── presentation/              ✅ (insights_screen + insight_card)
+│       ❌ data/ and providers/ missing (wired through dashboard_provider)
 └── shared/
-    ├── widgets/
-    │   ├── loading_indicator.dart
-    │   ├── error_view.dart
-    │   └── app_button.dart
-    └── models/
-        └── api_response.dart
+    └── widgets/                       ✅ (loading_indicator, error_view)
 ```
 
-## 🎨 UI/UX Design
+---
 
-### Color Palette
-```dart
-// Based on health/wellness theme
-primary: Color(0xFF6C63FF),     // Vibrant purple
-secondary: Color(0xFF4CAF50),   // Success green
-background: Color(0xFFF5F7FA),  // Light gray
-surface: Colors.white,
-error: Color(0xFFE57373),       // Soft red
-text: Color(0xFF2D3748),        // Dark gray
+## 🔔 Key Features Status
 
-// Metric colors
-sleep: Color(0xFF7C3AED),       // Purple
-energy: Color(0xFFFBBF24),      // Yellow
-mood: Color(0xFF3B82F6),        // Blue
-focus: Color(0xFF10B981),       // Green
-physical: Color(0xFFEF4444),    // Red
-```
+| Feature | Status | Notes |
+|---|---|---|
+| Daily Notifications | ❌ Not started | `flutter_local_notifications` planned |
+| Offline Support | ❌ Not started | Save & sync check-ins locally |
+| Streak Counter | ❌ Not started | "7 days in a row 🔥" |
+| Progress Badges | ❌ Not started | |
+| Celebration Animation | ❌ Not started | On check-in submit |
+| JWT Auth (backend) | ✅ Done | Google Sign-In → JWT, middleware on all routes |
+| JWT Auth (Flutter) | ✅ Done | Login screen, AuthProvider, secure token storage |
 
-### Key Screens
-
-#### 1. Home/Dashboard Screen
-```
-┌─────────────────────────────────┐
-│  ☀️  Good morning, Satish!      │
-│                                 │
-│  ┌───────────────────────────┐ │
-│  │  Today's Check-in          │ │
-│  │  ─────────────────────     │ │
-│  │  💪 Energy:        8/10    │ │
-│  │  😊 Mood:          7/10    │ │
-│  │  🎯 Focus:         9/10    │ │
-│  │  🏃 Physical:      7/10    │ │
-│  │                            │ │
-│  │  Checked in at 8:30 AM    │ │
-│  └───────────────────────────┘ │
-│                                 │
-│  Last Night                     │
-│  ┌───────────────────────────┐ │
-│  │  😴 Sleep                  │ │
-│  │  7.2 hours · Score: 82     │ │
-│  │  ▓▓▓░░░░░░░░ Deep 2.1h    │ │
-│  │  ▓▓▓▓▓▓░░░░ Light 3.8h    │ │
-│  │  ▓▓░░░░░░░░ REM 1.3h      │ │
-│  └───────────────────────────┘ │
-│                                 │
-│  ┌──────────┐  ┌──────────┐   │
-│  │ 💓 HRV    │  │ 😰 Stress │   │
-│  │ 67 ms    │  │ 32 (low) │   │
-│  └──────────┘  └──────────┘   │
-│                                 │
-│  🏃 Activity: 45 min active     │
-│                                 │
-│  [View Trends →]                │
-└─────────────────────────────────┘
-```
-
-#### 2. Morning Check-in Screen
-```
-┌─────────────────────────────────┐
-│  ← How are you feeling today?  │
-│                                 │
-│  Rate your current state:       │
-│                                 │
-│  💪 Energy                       │
-│  ●━━━━━━━━○─────── [8]         │
-│  Low              High          │
-│                                 │
-│  😊 Mood                         │
-│  ●━━━━━━○──────── [7]          │
-│  Low              High          │
-│                                 │
-│  🎯 Focus                        │
-│  ●━━━━━━━━━○───── [9]          │
-│  Low              High          │
-│                                 │
-│  🏃 Physical                     │
-│  ●━━━━━━○──────── [7]          │
-│  Low              High          │
-│                                 │
-│  📝 Notes (optional)             │
-│  ┌─────────────────────────┐   │
-│  │ Felt great after...     │   │
-│  └─────────────────────────┘   │
-│                                 │
-│  [ Submit Check-in ]            │
-└─────────────────────────────────┘
-```
-
-#### 3. 7-Day Trends Screen
-```
-┌─────────────────────────────────┐
-│  ← Your Week                    │
-│                                 │
-│  Energy Levels                  │
-│  10┐                 ●          │
-│   9│              ●  │          │
-│   8│           ●  │  │          │
-│   7│        ●  │  │  │          │
-│   6│     ●  │  │  │  │  ●       │
-│   5└─────────────────────       │
-│     M  T  W  T  F  S  S         │
-│                                 │
-│  Sleep Duration                 │
-│  █ 8.2h  █ 7.1h  █ 7.8h        │
-│  M       T       W              │
-│                                 │
-│  💡 Insights                     │
-│  • Best day: Wednesday (9/10)   │
-│  • Sleep correlation: +15%      │
-│  • Most consistent: Weekdays    │
-│                                 │
-│  [See More Insights →]          │
-└─────────────────────────────────┘
-```
-
-#### 4. Insights Screen
-```
-┌─────────────────────────────────┐
-│  ← Personalized Insights        │
-│                                 │
-│  Based on 30 days of data       │
-│                                 │
-│  ┌───────────────────────────┐ │
-│  │  😴 Sleep & Energy         │ │
-│  │  ─────────────────────     │ │
-│  │  Your energy is 15% higher │ │
-│  │  when you sleep 7+ hours   │ │
-│  │                            │ │
-│  │  📊 [View Details]         │ │
-│  └───────────────────────────┘ │
-│                                 │
-│  ┌───────────────────────────┐ │
-│  │  🏃 Activity & Mood        │ │
-│  │  ─────────────────────     │ │
-│  │  Your mood improves by     │ │
-│  │  12% on active days        │ │
-│  │                            │ │
-│  │  📊 [View Details]         │ │
-│  └───────────────────────────┘ │
-│                                 │
-│  ┌───────────────────────────┐ │
-│  │  💓 HRV & Recovery         │ │
-│  │  ─────────────────────     │ │
-│  │  Your HRV is highest on    │ │
-│  │  low-stress days           │ │
-│  │                            │ │
-│  │  📊 [View Details]         │ │
-│  └───────────────────────────┘ │
-└─────────────────────────────────┘
-```
-
-## 🔔 Key Features
-
-### 1. Daily Notifications
-- Morning reminder: "Time for your daily check-in! ☀️"
-- Smart timing: Learn user's wake time from Garmin data
-- Configurable reminder time
-
-### 2. Offline Support
-- Save check-ins locally if offline
-- Sync when connection restored
-- Show cached data while loading
-
-### 3. Simple Analytics
-- Streak counter: "7 days in a row! 🔥"
-- Progress badges
-- Data completeness indicator
-
-### 4. Privacy First
-- Data stored locally when possible
-- Clear data retention policy
-- Export/delete data option
-
-## 📊 Metrics to Track (Analytics)
-
-User Engagement:
-- Daily Active Users (DAU)
-- Check-in completion rate
-- Time to complete check-in
-- Return rate (day 7, day 30)
-
-Feature Usage:
-- Dashboard views
-- Trends views
-- Insights views
-- Notification engagement
-
-Data Quality:
-- Check-ins per user
-- Garmin sync success rate
-- Data gaps
-
-## 🚧 Technical Implementation Details
-
-### Backend APIs (Go)
-
-**1. Check-in Submission**
-```go
-POST /api/v1/checkin
-Authorization: Bearer <token>
-
-Request:
-{
-  "energy": 8,
-  "mood": 7,
-  "focus": 9,
-  "physical": 7,
-  "notes": "Felt great after morning run"
-}
-
-Response:
-{
-  "id": "uuid",
-  "timestamp": "2026-01-29T08:30:00Z",
-  "data": {...}
-}
-```
-
-**2. Dashboard Data**
-```go
-GET /api/v1/dashboard/today
-Authorization: Bearer <token>
-
-Response:
-{
-  "checkin": {
-    "energy": 8,
-    "mood": 7,
-    "focus": 9,
-    "physical": 7,
-    "timestamp": "2026-01-29T08:30:00Z"
-  },
-  "garmin": {
-    "sleep": {
-      "duration_hours": 7.2,
-      "score": 82,
-      "deep_minutes": 126,
-      "light_minutes": 228,
-      "rem_minutes": 78,
-      "awake_minutes": 0
-    },
-    "hrv": {
-      "average": 67.5
-    },
-    "activity": {
-      "active_minutes": 45,
-      "steps": 8234,
-      "calories": 2145
-    },
-    "stress": {
-      "average": 32,
-      "level": "low"
-    }
-  }
-}
-```
-
-**3. Correlations**
-```go
-GET /api/v1/insights/correlations?days=30
-Authorization: Bearer <token>
-
-Response:
-{
-  "correlations": [
-    {
-      "type": "sleep_energy",
-      "description": "Your energy is 15% higher when you sleep 7+ hours",
-      "confidence": 0.85,
-      "sample_size": 25,
-      "details": {
-        "condition": "sleep >= 7",
-        "avg_energy_with": 8.2,
-        "avg_energy_without": 7.1
-      }
-    },
-    {
-      "type": "activity_mood",
-      "description": "Your mood improves by 12% on active days",
-      "confidence": 0.78,
-      "sample_size": 22,
-      "details": {
-        "condition": "active_minutes >= 30",
-        "avg_mood_with": 7.8,
-        "avg_mood_without": 6.9
-      }
-    }
-  ]
-}
-```
-
-### Flutter State Management (Riverpod)
-
-```dart
-// Providers
-final checkinProvider = StateNotifierProvider<CheckinNotifier, CheckinState>(...);
-final dashboardProvider = FutureProvider<DashboardData>(...);
-final trendsProvider = FutureProvider<TrendsData>(...);
-final insightsProvider = FutureProvider<List<Correlation>>(...);
-
-// Usage in widget
-final dashboard = ref.watch(dashboardProvider);
-
-dashboard.when(
-  data: (data) => DashboardView(data: data),
-  loading: () => LoadingIndicator(),
-  error: (error, stack) => ErrorView(error: error),
-);
-```
+---
 
 ## 🎯 Success Criteria
 
-**Week 3 Goals:**
-- ✅ App deployed to TestFlight/Play Store (internal testing)
-- ✅ Backend deployed to AWS
-- ✅ Can submit daily check-in
-- ✅ Can view today's dashboard
-- ✅ Can view 7-day trends
-- ✅ At least 1 simple correlation showing
+| Criteria | Status |
+|---|---|
+| Can submit daily check-in | ✅ Done |
+| Can view today's dashboard | ✅ Done |
+| Can view 7-day trends | ✅ Done |
+| At least 1 simple correlation showing | ✅ Done |
+| App deployed to TestFlight/Play Store | ❌ Not done |
+| Backend deployed to AWS | ❌ Not done |
+| Check-in takes < 30 seconds | ✅ UI is simple enough |
+| Works offline for check-ins | ❌ Not done |
+| Insights appear after 7 days of data | ⬜ Logic exists, not fully tuned |
 
-**User Experience:**
-- Check-in takes < 30 seconds
-- App loads in < 2 seconds
-- Insights appear after 7 days of data
-- Works offline for check-ins
+---
 
-## 📅 Next Steps (After MVP)
+## 🛣️ Immediate Next Steps (Recommended Priority)
+
+1. **Platform Config** — Required to use Google Sign-In on real devices
+   - Android: `google-services.json` → `build.gradle` updates, `minSdkVersion 21`
+   - iOS: `GoogleService-Info.plist` → `REVERSED_CLIENT_ID` URL scheme, Keychain Sharing
+   - Backend env vars: `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GARMIN_INGEST_SECRET`
+
+2. **Offline Check-in Support**
+   - Store check-ins locally with Hive if backend is unavailable
+   - Sync on reconnection
+
+3. **Daily Notifications**
+   - Morning reminder using `flutter_local_notifications`
+   - Configurable time
+
+4. **Celebration Animation**
+   - Lottie or confetti animation after submitting check-in
+
+5. **Deployment**
+   - Backend to AWS ECS (infra partially in place via docker-compose)
+   - Flutter to TestFlight (iOS) + Google Play (Android)
+
+---
+
+## 📅 Future Phases (Unstarted)
 
 ### Phase 2: Experiment Tracking
 - Create experiments: "Sleep 30min earlier for a week"
@@ -530,29 +223,38 @@ dashboard.when(
 - Community insights
 - Achievement system
 
+---
+
 ## 🔧 Development Setup
 
-1. **Backend:** Already exists, just need new endpoints
-2. **Flutter:** New project, start from scratch
-3. **Deployment:**
-   - Backend: AWS ECS (already set up)
+1. **Backend:** `ingestion-service` on port `:8083` (all routes live here)
+2. **Flutter:** `mobile_app/` — run with `flutter run`
+3. **Infra:** `infra/docker-compose.yml` for local Postgres + TimescaleDB
+4. **Deployment:**
+   - Backend: AWS ECS (docker infrastructure in place)
    - Flutter: TestFlight (iOS) + Google Play (Android)
 
-## 📝 Documentation Needed
+## 📝 Documentation Status
 
-- [ ] API documentation (OpenAPI/Swagger)
-- [ ] Flutter app README with setup instructions
+- [x] Garmin integration guide (`docs/garmin-integration-guide.md`)
+- [x] TimescaleDB aggregation strategy (`docs/timescaledb-aggregation-strategy.md`)
+- [x] High-level design (`docs/highleveldesign.md`)
+- [x] Check-in API README (`CHECKIN_API_README.md`)
+- [x] Flutter app summary (`FLUTTER_APP_SUMMARY.md`)
+- [ ] OpenAPI/Swagger documentation
+- [ ] Flutter app setup README
 - [ ] Design system documentation
 - [ ] User guide / help screens in app
 
-## 💡 Questions to Consider
+## 💡 Open Questions
 
-1. **Authentication:** Use existing JWT from backend?
+1. ~~**Authentication:** JWT from backend — middleware not yet wired~~ ✅ Done
 2. **Push notifications:** AWS SNS or Firebase Cloud Messaging?
 3. **Analytics:** Firebase Analytics or custom solution?
 4. **Crash reporting:** Sentry or Firebase Crashlytics?
-5. **Backend changes:** New microservice or extend ingestion service?
+5. **`/api/v1/health/summary`:** Still needed or covered by dashboard/trends?
+6. **Insights `data/` layer:** Should correlations have their own feature folder vs piggyback on dashboard_provider?
 
 ---
 
-**Ready to start building?** Let's begin with the backend API endpoints!
+**Current Phase:** Phase 1 MVP — Core features built, auth + deployment + polish remaining.
