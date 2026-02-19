@@ -5,7 +5,7 @@
 **Vision:** Help users understand how their daily habits affect how they feel by combining subjective check-ins with objective Garmin data.
 
 **Last Updated:** 2026-02-18
-**Current Status:** Auth complete — platform config + offline support are next priorities
+**Current Status:** Auth + platform config complete — offline support + notifications are next priorities
 
 ## 📱 Technology Stack
 
@@ -181,10 +181,11 @@ mobile_app/lib/
 
 ## 🛣️ Immediate Next Steps (Recommended Priority)
 
-1. **Platform Config** — Required to use Google Sign-In on real devices
-   - Android: `google-services.json` → `build.gradle` updates, `minSdkVersion 21`
-   - iOS: `GoogleService-Info.plist` → `REVERSED_CLIENT_ID` URL scheme, Keychain Sharing
-   - Backend env vars: `JWT_SECRET`, `GOOGLE_CLIENT_ID`, `GARMIN_INGEST_SECRET`
+1. **Platform Config** ✅ COMPLETE
+   - ✅ Android: Google Services plugin, `applicationId`, `minSdk = 21`
+   - ✅ iOS: Bundle ID, `REVERSED_CLIENT_ID` URL scheme slot, Keychain entitlements, `Runner.entitlements`
+   - ✅ `.env.example` and `google-services.json.example` / `GoogleService-Info.plist.example` committed
+   - ⚠️ Manual remaining: download real `google-services.json` + `GoogleService-Info.plist` from Google Cloud Console, set backend env vars
 
 2. **Offline Check-in Support**
    - Store check-ins locally with Hive if backend is unavailable
