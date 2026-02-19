@@ -1,4 +1,4 @@
-package handlers
+package audit
 
 import (
 	"encoding/json"
@@ -6,38 +6,33 @@ import (
 	"net/http"
 	"strconv"
 	"time"
-
-	"github.com/satishthakur/health-assistant/backend/internal/db"
 )
 
-// AuditHandler handles sync audit endpoints
-type AuditHandler struct {
-	auditRepo *db.AuditRepository
+// Handler handles sync audit endpoints.
+type Handler struct {
+	repo *Repository
 }
 
-// NewAuditHandler creates a new AuditHandler
-func NewAuditHandler(auditRepo *db.AuditRepository) *AuditHandler {
-	return &AuditHandler{
-		auditRepo: auditRepo,
-	}
+// NewHandler creates a new audit Handler.
+func NewHandler(repo *Repository) *Handler {
+	return &Handler{repo: repo}
 }
 
 // HandlePostSyncAudit handles POST /api/v1/audit/sync
-func (h *AuditHandler) HandlePostSyncAudit(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandlePostSyncAudit(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	var payload db.SyncAudit
+	var payload SyncAudit
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		log.Printf("Failed to decode audit payload: %v", err)
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
 
-	// Insert audit record
-	if err := h.auditRepo.InsertSyncAudit(r.Context(), &payload); err != nil {
+	if err := h.repo.InsertSyncAudit(r.Context(), &payload); err != nil {
 		log.Printf("Failed to insert sync audit: %v", err)
 		http.Error(w, "Failed to store audit", http.StatusInternalServerError)
 		return
@@ -55,7 +50,7 @@ func (h *AuditHandler) HandlePostSyncAudit(w http.ResponseWriter, r *http.Reques
 }
 
 // HandleGetRecentSyncAudits handles GET /api/v1/audit/sync/recent?user_id=X&limit=Y
-func (h *AuditHandler) HandleGetRecentSyncAudits(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleGetRecentSyncAudits(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -67,14 +62,14 @@ func (h *AuditHandler) HandleGetRecentSyncAudits(w http.ResponseWriter, r *http.
 		return
 	}
 
-	limit := 50 // default
+	limit := 50
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 500 {
 			limit = l
 		}
 	}
 
-	audits, err := h.auditRepo.GetRecentSyncAudits(r.Context(), userID, limit)
+	audits, err := h.repo.GetRecentSyncAudits(r.Context(), userID, limit)
 	if err != nil {
 		log.Printf("Failed to get recent sync audits: %v", err)
 		http.Error(w, "Failed to retrieve audits", http.StatusInternalServerError)
@@ -87,7 +82,7 @@ func (h *AuditHandler) HandleGetRecentSyncAudits(w http.ResponseWriter, r *http.
 }
 
 // HandleGetSyncAuditsByType handles GET /api/v1/audit/sync/by-type?data_type=X&limit=Y
-func (h *AuditHandler) HandleGetSyncAuditsByType(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleGetSyncAuditsByType(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -99,14 +94,14 @@ func (h *AuditHandler) HandleGetSyncAuditsByType(w http.ResponseWriter, r *http.
 		return
 	}
 
-	limit := 50 // default
+	limit := 50
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 && l <= 500 {
 			limit = l
 		}
 	}
 
-	audits, err := h.auditRepo.GetSyncAuditsByDataType(r.Context(), dataType, limit)
+	audits, err := h.repo.GetSyncAuditsByDataType(r.Context(), dataType, limit)
 	if err != nil {
 		log.Printf("Failed to get sync audits by type: %v", err)
 		http.Error(w, "Failed to retrieve audits", http.StatusInternalServerError)
@@ -119,7 +114,7 @@ func (h *AuditHandler) HandleGetSyncAuditsByType(w http.ResponseWriter, r *http.
 }
 
 // HandleGetSyncAuditStats handles GET /api/v1/audit/sync/stats?user_id=X&start=Y&end=Z
-func (h *AuditHandler) HandleGetSyncAuditStats(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleGetSyncAuditStats(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -131,7 +126,6 @@ func (h *AuditHandler) HandleGetSyncAuditStats(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Default to last 30 days
 	endDate := time.Now()
 	startDate := endDate.AddDate(0, 0, -30)
 
@@ -147,7 +141,7 @@ func (h *AuditHandler) HandleGetSyncAuditStats(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	stats, err := h.auditRepo.GetSyncAuditStats(r.Context(), userID, startDate, endDate)
+	stats, err := h.repo.GetSyncAuditStats(r.Context(), userID, startDate, endDate)
 	if err != nil {
 		log.Printf("Failed to get sync audit stats: %v", err)
 		http.Error(w, "Failed to retrieve stats", http.StatusInternalServerError)

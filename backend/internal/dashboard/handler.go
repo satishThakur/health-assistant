@@ -1,4 +1,4 @@
-package handlers
+package dashboard
 
 import (
 	"encoding/json"
@@ -6,24 +6,22 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/satishthakur/health-assistant/backend/internal/db"
+	"github.com/satishthakur/health-assistant/backend/internal/checkin"
 	"github.com/satishthakur/health-assistant/backend/internal/middleware"
 )
 
-// DashboardHandler handles dashboard and trends requests
-type DashboardHandler struct {
-	checkinRepo *db.CheckinRepository
+// Handler handles dashboard and trends requests.
+type Handler struct {
+	checkinRepo *checkin.Repository
 }
 
-// NewDashboardHandler creates a new DashboardHandler
-func NewDashboardHandler(checkinRepo *db.CheckinRepository) *DashboardHandler {
-	return &DashboardHandler{
-		checkinRepo: checkinRepo,
-	}
+// NewHandler creates a new dashboard Handler.
+func NewHandler(checkinRepo *checkin.Repository) *Handler {
+	return &Handler{checkinRepo: checkinRepo}
 }
 
-// HandleGetTodayDashboard handles GET /api/v1/dashboard/today
-func (h *DashboardHandler) HandleGetTodayDashboard(w http.ResponseWriter, r *http.Request) {
+// HandleGetToday handles GET /api/v1/dashboard/today
+func (h *Handler) HandleGetToday(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -35,7 +33,6 @@ func (h *DashboardHandler) HandleGetTodayDashboard(w http.ResponseWriter, r *htt
 		return
 	}
 
-	// Get today's dashboard data
 	dashboard, err := h.checkinRepo.GetTodayDashboard(r.Context(), userID)
 	if err != nil {
 		log.Printf("Failed to fetch today's dashboard: %v", err)
@@ -52,7 +49,7 @@ func (h *DashboardHandler) HandleGetTodayDashboard(w http.ResponseWriter, r *htt
 }
 
 // HandleGetWeekTrends handles GET /api/v1/trends/week
-func (h *DashboardHandler) HandleGetWeekTrends(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleGetWeekTrends(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -64,7 +61,6 @@ func (h *DashboardHandler) HandleGetWeekTrends(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Get 7-day trends
 	trends, err := h.checkinRepo.GetWeekTrends(r.Context(), userID)
 	if err != nil {
 		log.Printf("Failed to fetch week trends: %v", err)
@@ -82,7 +78,7 @@ func (h *DashboardHandler) HandleGetWeekTrends(w http.ResponseWriter, r *http.Re
 }
 
 // HandleGetCorrelations handles GET /api/v1/insights/correlations
-func (h *DashboardHandler) HandleGetCorrelations(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleGetCorrelations(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -94,7 +90,6 @@ func (h *DashboardHandler) HandleGetCorrelations(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Parse days parameter (default 30)
 	daysParam := r.URL.Query().Get("days")
 	days := 30
 	if daysParam != "" {
@@ -103,7 +98,6 @@ func (h *DashboardHandler) HandleGetCorrelations(w http.ResponseWriter, r *http.
 		}
 	}
 
-	// Get correlations
 	insights, err := h.checkinRepo.GetCorrelations(r.Context(), userID, days)
 	if err != nil {
 		log.Printf("Failed to calculate correlations: %v", err)

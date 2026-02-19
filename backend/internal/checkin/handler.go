@@ -1,4 +1,4 @@
-package handlers
+package checkin
 
 import (
 	"encoding/json"
@@ -10,40 +10,37 @@ import (
 	"github.com/satishthakur/health-assistant/backend/internal/db"
 	"github.com/satishthakur/health-assistant/backend/internal/middleware"
 	"github.com/satishthakur/health-assistant/backend/internal/models"
-	"github.com/satishthakur/health-assistant/backend/internal/validation"
 )
 
-// CheckinHandler handles check-in related requests
-type CheckinHandler struct {
+// Handler handles check-in related requests.
+type Handler struct {
 	eventRepo   *db.EventRepository
-	checkinRepo *db.CheckinRepository
+	checkinRepo *Repository
 }
 
-// NewCheckinHandler creates a new CheckinHandler
-func NewCheckinHandler(eventRepo *db.EventRepository, checkinRepo *db.CheckinRepository) *CheckinHandler {
-	return &CheckinHandler{
+// NewHandler creates a new check-in Handler.
+func NewHandler(eventRepo *db.EventRepository, checkinRepo *Repository) *Handler {
+	return &Handler{
 		eventRepo:   eventRepo,
 		checkinRepo: checkinRepo,
 	}
 }
 
-// HandleCheckinSubmission handles POST /api/v1/checkin
-func (h *CheckinHandler) HandleCheckinSubmission(w http.ResponseWriter, r *http.Request) {
+// HandleSubmission handles POST /api/v1/checkin
+func (h *Handler) HandleSubmission(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
 
-	// Parse request body
-	var payload validation.CheckinPayload
+	var payload Payload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		log.Printf("Failed to parse checkin payload: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	// Validate payload
-	if err := validation.ValidateCheckinPayload(&payload); err != nil {
+	if err := ValidatePayload(&payload); err != nil {
 		log.Printf("Checkin validation failed: %v", err)
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -60,7 +57,6 @@ func (h *CheckinHandler) HandleCheckinSubmission(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Create SubjectiveFeeling from payload
 	feeling := models.SubjectiveFeeling{
 		Energy:   payload.Energy,
 		Mood:     payload.Mood,
@@ -69,7 +65,6 @@ func (h *CheckinHandler) HandleCheckinSubmission(w http.ResponseWriter, r *http.
 		Notes:    payload.Notes,
 	}
 
-	// Marshal to JSON
 	feelingJSON, err := json.Marshal(feeling)
 	if err != nil {
 		log.Printf("Failed to marshal feeling data: %v", err)
@@ -77,9 +72,7 @@ func (h *CheckinHandler) HandleCheckinSubmission(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Create event
 	now := time.Now()
-	// Use start of day as the event time for check-ins (one per day)
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 
 	event := &models.Event{
@@ -90,7 +83,6 @@ func (h *CheckinHandler) HandleCheckinSubmission(w http.ResponseWriter, r *http.
 		Data:      feelingJSON,
 	}
 
-	// Store in database
 	result, err := h.eventRepo.InsertEvent(r.Context(), event)
 	if err != nil {
 		log.Printf("Failed to store checkin: %v", err)
@@ -103,7 +95,6 @@ func (h *CheckinHandler) HandleCheckinSubmission(w http.ResponseWriter, r *http.
 		action = "inserted"
 	}
 
-	// Return success response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]interface{}{
@@ -117,8 +108,8 @@ func (h *CheckinHandler) HandleCheckinSubmission(w http.ResponseWriter, r *http.
 		action, userID, payload.Energy, payload.Mood, payload.Focus, payload.Physical)
 }
 
-// HandleGetLatestCheckin handles GET /api/v1/checkin/latest
-func (h *CheckinHandler) HandleGetLatestCheckin(w http.ResponseWriter, r *http.Request) {
+// HandleGetLatest handles GET /api/v1/checkin/latest
+func (h *Handler) HandleGetLatest(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -130,19 +121,13 @@ func (h *CheckinHandler) HandleGetLatestCheckin(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Get today's events
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
 	events, err := h.eventRepo.GetEventsByUserAndType(
-		r.Context(),
-		userID,
-		models.EventTypeSubjectiveFeeling,
-		startOfDay,
-		endOfDay,
+		r.Context(), userID, models.EventTypeSubjectiveFeeling, startOfDay, endOfDay,
 	)
-
 	if err != nil {
 		log.Printf("Failed to fetch latest checkin: %v", err)
 		http.Error(w, "Failed to fetch checkin", http.StatusInternalServerError)
@@ -160,7 +145,6 @@ func (h *CheckinHandler) HandleGetLatestCheckin(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	// Parse the feeling data
 	var feeling models.SubjectiveFeeling
 	if err := json.Unmarshal(events[0].Data, &feeling); err != nil {
 		log.Printf("Failed to parse feeling data: %v", err)
@@ -177,8 +161,8 @@ func (h *CheckinHandler) HandleGetLatestCheckin(w http.ResponseWriter, r *http.R
 	})
 }
 
-// HandleGetCheckinHistory handles GET /api/v1/checkin/history?days=30
-func (h *CheckinHandler) HandleGetCheckinHistory(w http.ResponseWriter, r *http.Request) {
+// HandleGetHistory handles GET /api/v1/checkin/history?days=30
+func (h *Handler) HandleGetHistory(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -190,7 +174,6 @@ func (h *CheckinHandler) HandleGetCheckinHistory(w http.ResponseWriter, r *http.
 		return
 	}
 
-	// Parse days parameter (default 30)
 	daysParam := r.URL.Query().Get("days")
 	days := 30
 	if daysParam != "" {
@@ -199,41 +182,32 @@ func (h *CheckinHandler) HandleGetCheckinHistory(w http.ResponseWriter, r *http.
 		}
 	}
 
-	// Calculate date range
 	now := time.Now()
 	startDate := now.AddDate(0, 0, -days)
 	startTime := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
 
-	// Get events
 	events, err := h.eventRepo.GetEventsByUserAndType(
-		r.Context(),
-		userID,
-		models.EventTypeSubjectiveFeeling,
-		startTime,
-		now,
+		r.Context(), userID, models.EventTypeSubjectiveFeeling, startTime, now,
 	)
-
 	if err != nil {
 		log.Printf("Failed to fetch checkin history: %v", err)
 		http.Error(w, "Failed to fetch history", http.StatusInternalServerError)
 		return
 	}
 
-	// Parse events into response format
-	type CheckinHistoryItem struct {
-		Date    string                    `json:"date"`
+	type HistoryItem struct {
+		Date    string                   `json:"date"`
 		Checkin models.SubjectiveFeeling `json:"checkin"`
 	}
 
-	history := make([]CheckinHistoryItem, 0, len(events))
+	history := make([]HistoryItem, 0, len(events))
 	for _, event := range events {
 		var feeling models.SubjectiveFeeling
 		if err := json.Unmarshal(event.Data, &feeling); err != nil {
 			log.Printf("Failed to parse feeling data: %v", err)
 			continue
 		}
-
-		history = append(history, CheckinHistoryItem{
+		history = append(history, HistoryItem{
 			Date:    event.Time.Format("2006-01-02"),
 			Checkin: feeling,
 		})

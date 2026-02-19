@@ -10,15 +10,18 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/satishthakur/health-assistant/backend/internal/audit"
 	"github.com/satishthakur/health-assistant/backend/internal/auth"
+	"github.com/satishthakur/health-assistant/backend/internal/checkin"
 	"github.com/satishthakur/health-assistant/backend/internal/config"
+	"github.com/satishthakur/health-assistant/backend/internal/dashboard"
 	"github.com/satishthakur/health-assistant/backend/internal/db"
-	"github.com/satishthakur/health-assistant/backend/internal/handlers"
+	"github.com/satishthakur/health-assistant/backend/internal/garmin"
 	"github.com/satishthakur/health-assistant/backend/internal/middleware"
 )
 
 func main() {
-	log.Println("Starting Ingestion Service...")
+	log.Println("Starting Health Assistant Server...")
 
 	// Load configuration
 	cfg := config.Load()
@@ -44,16 +47,16 @@ func main() {
 
 	// Create repositories
 	eventRepo := db.NewEventRepository(database)
-	auditRepo := db.NewAuditRepository(database)
-	checkinRepo := db.NewCheckinRepository(database)
-	userRepo := db.NewUserRepository(database)
+	userRepo := auth.NewUserRepository(database)
+	checkinRepo := checkin.NewRepository(database)
+	auditRepo := audit.NewRepository(database)
 
 	// Create handlers
-	authHandler := handlers.NewAuthHandler(googleVerifier, userRepo, tokenService)
-	garminHandler := handlers.NewGarminIngestionHandler(eventRepo)
-	auditHandler := handlers.NewAuditHandler(auditRepo)
-	checkinHandler := handlers.NewCheckinHandler(eventRepo, checkinRepo)
-	dashboardHandler := handlers.NewDashboardHandler(checkinRepo)
+	authHandler := auth.NewHandler(googleVerifier, userRepo, tokenService)
+	garminHandler := garmin.NewHandler(eventRepo)
+	auditHandler := audit.NewHandler(auditRepo)
+	checkinHandler := checkin.NewHandler(eventRepo, checkinRepo)
+	dashboardHandler := dashboard.NewHandler(checkinRepo)
 
 	// Build middleware
 	requireAuth := middleware.WithAuth(tokenService)
@@ -77,7 +80,7 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(map[string]string{
 			"status":          "healthy",
-			"service":         "ingestion-service",
+			"service":         "health-assistant",
 			"database_status": dbStatus,
 		})
 	})
@@ -100,12 +103,12 @@ func main() {
 	mux.Handle("/api/v1/audit/sync/stats", requireAuth(http.HandlerFunc(auditHandler.HandleGetSyncAuditStats)))
 
 	// Check-in endpoints (JWT protected)
-	mux.Handle("/api/v1/checkin", requireAuth(http.HandlerFunc(checkinHandler.HandleCheckinSubmission)))
-	mux.Handle("/api/v1/checkin/latest", requireAuth(http.HandlerFunc(checkinHandler.HandleGetLatestCheckin)))
-	mux.Handle("/api/v1/checkin/history", requireAuth(http.HandlerFunc(checkinHandler.HandleGetCheckinHistory)))
+	mux.Handle("/api/v1/checkin", requireAuth(http.HandlerFunc(checkinHandler.HandleSubmission)))
+	mux.Handle("/api/v1/checkin/latest", requireAuth(http.HandlerFunc(checkinHandler.HandleGetLatest)))
+	mux.Handle("/api/v1/checkin/history", requireAuth(http.HandlerFunc(checkinHandler.HandleGetHistory)))
 
 	// Dashboard and trends endpoints (JWT protected)
-	mux.Handle("/api/v1/dashboard/today", requireAuth(http.HandlerFunc(dashboardHandler.HandleGetTodayDashboard)))
+	mux.Handle("/api/v1/dashboard/today", requireAuth(http.HandlerFunc(dashboardHandler.HandleGetToday)))
 	mux.Handle("/api/v1/trends/week", requireAuth(http.HandlerFunc(dashboardHandler.HandleGetWeekTrends)))
 	mux.Handle("/api/v1/insights/correlations", requireAuth(http.HandlerFunc(dashboardHandler.HandleGetCorrelations)))
 
@@ -121,7 +124,7 @@ func main() {
 
 	// Start server in a goroutine
 	go func() {
-		log.Printf("Ingestion Service listening on port %s", port)
+		log.Printf("Health Assistant Server listening on port %s", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Failed to start server: %v", err)
 		}

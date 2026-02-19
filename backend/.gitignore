@@ -1,0 +1,6 @@
+# Compiled binary (built by `go build ./cmd/server`)
+/server
+*.exe
+
+# Environment
+.env

@@ -4,8 +4,8 @@
 
 **Vision:** Help users understand how their daily habits affect how they feel by combining subjective check-ins with objective Garmin data.
 
-**Last Updated:** 2026-02-18
-**Current Status:** Auth + platform config complete — offline support + notifications are next priorities
+**Last Updated:** 2026-02-19
+**Current Status:** Backend refactored to feature-based packages — offline support + notifications are next priorities
 
 ## 📱 Technology Stack
 
@@ -228,7 +228,7 @@ mobile_app/lib/
 
 ## 🔧 Development Setup
 
-1. **Backend:** `ingestion-service` on port `:8083` (all routes live here)
+1. **Backend:** `cmd/server` on port `:8083` (single binary, feature-based packages)
 2. **Flutter:** `mobile_app/` — run with `flutter run`
 3. **Infra:** `infra/docker-compose.yml` for local Postgres + TimescaleDB
 4. **Deployment:**

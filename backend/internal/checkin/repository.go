@@ -1,4 +1,4 @@
-package db
+package checkin
 
 import (
 	"context"
@@ -6,26 +6,27 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/satishthakur/health-assistant/backend/internal/db"
 	"github.com/satishthakur/health-assistant/backend/internal/models"
 )
 
-// CheckinRepository handles database operations for check-ins
-type CheckinRepository struct {
-	db *Database
+// Repository handles database operations for check-in and dashboard queries.
+type Repository struct {
+	db *db.Database
 }
 
-// NewCheckinRepository creates a new CheckinRepository
-func NewCheckinRepository(db *Database) *CheckinRepository {
-	return &CheckinRepository{db: db}
+// NewRepository creates a new Repository.
+func NewRepository(database *db.Database) *Repository {
+	return &Repository{db: database}
 }
 
-// DashboardData represents today's summary data
+// DashboardData represents today's summary data.
 type DashboardData struct {
 	Checkin *models.SubjectiveFeeling `json:"checkin,omitempty"`
 	Garmin  *GarminSummary            `json:"garmin,omitempty"`
 }
 
-// GarminSummary represents aggregated Garmin data for today
+// GarminSummary represents aggregated Garmin data for today.
 type GarminSummary struct {
 	Sleep       *models.GarminSleep       `json:"sleep,omitempty"`
 	Activity    *models.GarminActivity    `json:"activity,omitempty"`
@@ -35,18 +36,18 @@ type GarminSummary struct {
 	BodyBattery *models.GarminBodyBattery `json:"body_battery,omitempty"`
 }
 
-// HRVData represents HRV information
+// HRVData represents HRV information.
 type HRVData struct {
 	Average float64 `json:"average"`
 }
 
-// StressData represents stress information
+// StressData represents stress information.
 type StressData struct {
 	Average int    `json:"average"`
 	Level   string `json:"level"` // low, moderate, high
 }
 
-// TrendData represents 7-day trend data
+// TrendData represents 7-day trend data.
 type TrendData struct {
 	Date     string                    `json:"date"`
 	Checkin  *models.SubjectiveFeeling `json:"checkin,omitempty"`
@@ -54,7 +55,7 @@ type TrendData struct {
 	Activity *models.GarminActivity    `json:"activity,omitempty"`
 }
 
-// CorrelationInsight represents a correlation between metrics
+// CorrelationInsight represents a correlation between metrics.
 type CorrelationInsight struct {
 	Type        string                 `json:"type"`
 	Description string                 `json:"description"`
@@ -63,20 +64,19 @@ type CorrelationInsight struct {
 	Details     map[string]interface{} `json:"details"`
 }
 
-// DailyData represents aggregated data for a single day
-type DailyData struct {
+// dailyData represents aggregated data for a single day (used internally).
+type dailyData struct {
 	Feeling  *models.SubjectiveFeeling
 	Sleep    *models.GarminSleep
 	Activity *models.GarminActivity
 }
 
-// GetTodayDashboard retrieves today's check-in and Garmin data
-func (r *CheckinRepository) GetTodayDashboard(ctx context.Context, userID string) (*DashboardData, error) {
+// GetTodayDashboard retrieves today's check-in and Garmin data.
+func (r *Repository) GetTodayDashboard(ctx context.Context, userID string) (*DashboardData, error) {
 	now := time.Now()
 	startOfDay := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
 	endOfDay := startOfDay.Add(24 * time.Hour)
 
-	// Query all today's events
 	query := `
 		SELECT time, event_type, data
 		FROM events
@@ -92,9 +92,7 @@ func (r *CheckinRepository) GetTodayDashboard(ctx context.Context, userID string
 	}
 	defer rows.Close()
 
-	dashboard := &DashboardData{
-		Garmin: &GarminSummary{},
-	}
+	dashboard := &DashboardData{Garmin: &GarminSummary{}}
 
 	for rows.Next() {
 		var eventTime time.Time
@@ -111,30 +109,24 @@ func (r *CheckinRepository) GetTodayDashboard(ctx context.Context, userID string
 			if err := json.Unmarshal(data, &feeling); err == nil {
 				dashboard.Checkin = &feeling
 			}
-
 		case models.EventTypeGarminSleep:
 			var sleep models.GarminSleep
 			if err := json.Unmarshal(data, &sleep); err == nil {
 				dashboard.Garmin.Sleep = &sleep
 			}
-
 		case models.EventTypeGarminActivity:
 			var activity models.GarminActivity
 			if err := json.Unmarshal(data, &activity); err == nil {
 				dashboard.Garmin.Activity = &activity
 			}
-
 		case models.EventTypeGarminHRV:
-			// HRV data structure from Garmin (assuming it has avg field)
 			var hrvData map[string]interface{}
 			if err := json.Unmarshal(data, &hrvData); err == nil {
 				if avg, ok := hrvData["average"].(float64); ok {
 					dashboard.Garmin.HRV = &HRVData{Average: avg}
 				}
 			}
-
 		case models.EventTypeGarminStress:
-			// Stress data structure
 			var stressData map[string]interface{}
 			if err := json.Unmarshal(data, &stressData); err == nil {
 				if avg, ok := stressData["average_stress_level"].(float64); ok {
@@ -145,19 +137,14 @@ func (r *CheckinRepository) GetTodayDashboard(ctx context.Context, userID string
 					} else if avgInt > 50 {
 						level = "high"
 					}
-					dashboard.Garmin.Stress = &StressData{
-						Average: avgInt,
-						Level:   level,
-					}
+					dashboard.Garmin.Stress = &StressData{Average: avgInt, Level: level}
 				}
 			}
-
 		case models.EventTypeGarminDailyStats:
 			var dailyStats models.GarminDailyStats
 			if err := json.Unmarshal(data, &dailyStats); err == nil {
 				dashboard.Garmin.DailyStats = &dailyStats
 			}
-
 		case models.EventTypeGarminBodyBattery:
 			var bodyBattery models.GarminBodyBattery
 			if err := json.Unmarshal(data, &bodyBattery); err == nil {
@@ -173,13 +160,12 @@ func (r *CheckinRepository) GetTodayDashboard(ctx context.Context, userID string
 	return dashboard, nil
 }
 
-// GetWeekTrends retrieves 7-day trend data
-func (r *CheckinRepository) GetWeekTrends(ctx context.Context, userID string) ([]TrendData, error) {
+// GetWeekTrends retrieves 7-day trend data.
+func (r *Repository) GetWeekTrends(ctx context.Context, userID string) ([]TrendData, error) {
 	now := time.Now()
-	startDate := now.AddDate(0, 0, -6) // Last 7 days including today
+	startDate := now.AddDate(0, 0, -6)
 	startOfWeek := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
 
-	// Query all events for the past 7 days
 	query := `
 		SELECT time, event_type, data
 		FROM events
@@ -194,7 +180,6 @@ func (r *CheckinRepository) GetWeekTrends(ctx context.Context, userID string) ([
 	}
 	defer rows.Close()
 
-	// Group by date
 	trendsByDate := make(map[string]*TrendData)
 
 	for rows.Next() {
@@ -210,7 +195,6 @@ func (r *CheckinRepository) GetWeekTrends(ctx context.Context, userID string) ([
 		if _, exists := trendsByDate[dateKey]; !exists {
 			trendsByDate[dateKey] = &TrendData{Date: dateKey}
 		}
-
 		trend := trendsByDate[dateKey]
 
 		switch eventType {
@@ -219,13 +203,11 @@ func (r *CheckinRepository) GetWeekTrends(ctx context.Context, userID string) ([
 			if err := json.Unmarshal(data, &feeling); err == nil {
 				trend.Checkin = &feeling
 			}
-
 		case models.EventTypeGarminSleep:
 			var sleep models.GarminSleep
 			if err := json.Unmarshal(data, &sleep); err == nil {
 				trend.Sleep = &sleep
 			}
-
 		case models.EventTypeGarminActivity:
 			var activity models.GarminActivity
 			if err := json.Unmarshal(data, &activity); err == nil {
@@ -238,7 +220,6 @@ func (r *CheckinRepository) GetWeekTrends(ctx context.Context, userID string) ([
 		return nil, fmt.Errorf("error iterating events: %w", err)
 	}
 
-	// Convert map to sorted array
 	trends := make([]TrendData, 0, len(trendsByDate))
 	for _, trend := range trendsByDate {
 		trends = append(trends, *trend)
@@ -247,13 +228,12 @@ func (r *CheckinRepository) GetWeekTrends(ctx context.Context, userID string) ([
 	return trends, nil
 }
 
-// GetCorrelations calculates simple correlations between Garmin data and feelings
-func (r *CheckinRepository) GetCorrelations(ctx context.Context, userID string, days int) ([]CorrelationInsight, error) {
+// GetCorrelations calculates simple correlations between Garmin data and feelings.
+func (r *Repository) GetCorrelations(ctx context.Context, userID string, days int) ([]CorrelationInsight, error) {
 	now := time.Now()
 	startDate := now.AddDate(0, 0, -days)
 	startTime := time.Date(startDate.Year(), startDate.Month(), startDate.Day(), 0, 0, 0, 0, startDate.Location())
 
-	// Query all events for the specified period
 	query := `
 		SELECT time, event_type, data
 		FROM events
@@ -268,8 +248,7 @@ func (r *CheckinRepository) GetCorrelations(ctx context.Context, userID string, 
 	}
 	defer rows.Close()
 
-	// Group data by date
-	dailyData := make(map[string]*DailyData)
+	byDate := make(map[string]*dailyData)
 
 	for rows.Next() {
 		var eventTime time.Time
@@ -281,11 +260,10 @@ func (r *CheckinRepository) GetCorrelations(ctx context.Context, userID string, 
 		}
 
 		dateKey := eventTime.Format("2006-01-02")
-		if _, exists := dailyData[dateKey]; !exists {
-			dailyData[dateKey] = &DailyData{}
+		if _, exists := byDate[dateKey]; !exists {
+			byDate[dateKey] = &dailyData{}
 		}
-
-		daily := dailyData[dateKey]
+		daily := byDate[dateKey]
 
 		switch eventType {
 		case models.EventTypeSubjectiveFeeling:
@@ -293,13 +271,11 @@ func (r *CheckinRepository) GetCorrelations(ctx context.Context, userID string, 
 			if err := json.Unmarshal(data, &feeling); err == nil {
 				daily.Feeling = &feeling
 			}
-
 		case models.EventTypeGarminSleep:
 			var sleep models.GarminSleep
 			if err := json.Unmarshal(data, &sleep); err == nil {
 				daily.Sleep = &sleep
 			}
-
 		case models.EventTypeGarminActivity:
 			var activity models.GarminActivity
 			if err := json.Unmarshal(data, &activity); err == nil {
@@ -312,166 +288,121 @@ func (r *CheckinRepository) GetCorrelations(ctx context.Context, userID string, 
 		return nil, fmt.Errorf("error iterating events: %w", err)
 	}
 
-	// Calculate correlations
-	insights := r.calculateCorrelations(dailyData)
-
-	return insights, nil
+	return calculateCorrelations(byDate), nil
 }
 
-// calculateCorrelations performs simple correlation calculations
-func (r *CheckinRepository) calculateCorrelations(dailyData map[string]*DailyData) []CorrelationInsight {
-	insights := []CorrelationInsight{}
+func calculateCorrelations(byDate map[string]*dailyData) []CorrelationInsight {
+	var insights []CorrelationInsight
 
-	// Sleep vs Energy correlation
-	if insight := r.calculateSleepEnergyCorrelation(dailyData); insight != nil {
+	if insight := sleepEnergyCorrelation(byDate); insight != nil {
 		insights = append(insights, *insight)
 	}
-
-	// Activity vs Mood correlation
-	if insight := r.calculateActivityMoodCorrelation(dailyData); insight != nil {
+	if insight := activityMoodCorrelation(byDate); insight != nil {
 		insights = append(insights, *insight)
 	}
-
-	// Sleep vs Focus correlation
-	if insight := r.calculateSleepFocusCorrelation(dailyData); insight != nil {
+	if insight := sleepFocusCorrelation(byDate); insight != nil {
 		insights = append(insights, *insight)
 	}
 
 	return insights
 }
 
-// calculateSleepEnergyCorrelation calculates correlation between sleep duration and energy
-func (r *CheckinRepository) calculateSleepEnergyCorrelation(dailyData map[string]*DailyData) *CorrelationInsight {
-	var energyWithGoodSleep []int
-	var energyWithPoorSleep []int
-
-	for _, data := range dailyData {
-		if data.Feeling == nil || data.Sleep == nil {
+func sleepEnergyCorrelation(byDate map[string]*dailyData) *CorrelationInsight {
+	var withGood, withPoor []int
+	for _, d := range byDate {
+		if d.Feeling == nil || d.Sleep == nil {
 			continue
 		}
-
-		sleepHours := float64(data.Sleep.DurationMinutes) / 60.0
-		if sleepHours >= 7.0 {
-			energyWithGoodSleep = append(energyWithGoodSleep, data.Feeling.Energy)
+		if float64(d.Sleep.DurationMinutes)/60.0 >= 7.0 {
+			withGood = append(withGood, d.Feeling.Energy)
 		} else {
-			energyWithPoorSleep = append(energyWithPoorSleep, data.Feeling.Energy)
+			withPoor = append(withPoor, d.Feeling.Energy)
 		}
 	}
-
-	// Need at least 5 samples in each group
-	if len(energyWithGoodSleep) < 5 || len(energyWithPoorSleep) < 5 {
+	if len(withGood) < 5 || len(withPoor) < 5 {
 		return nil
 	}
-
-	avgWithGoodSleep := average(energyWithGoodSleep)
-	avgWithPoorSleep := average(energyWithPoorSleep)
-	improvement := ((avgWithGoodSleep - avgWithPoorSleep) / avgWithPoorSleep) * 100
-
-	if improvement < 5 { // Only show if improvement is at least 5%
+	avgGood, avgPoor := average(withGood), average(withPoor)
+	improvement := ((avgGood - avgPoor) / avgPoor) * 100
+	if improvement < 5 {
 		return nil
 	}
-
 	return &CorrelationInsight{
 		Type:        "sleep_energy",
 		Description: fmt.Sprintf("Your energy is %.0f%% higher when you sleep 7+ hours", improvement),
 		Confidence:  0.85,
-		SampleSize:  len(energyWithGoodSleep) + len(energyWithPoorSleep),
+		SampleSize:  len(withGood) + len(withPoor),
 		Details: map[string]interface{}{
-			"condition":           "sleep >= 7 hours",
-			"avg_energy_with":     avgWithGoodSleep,
-			"avg_energy_without":  avgWithPoorSleep,
-			"improvement_percent": improvement,
+			"condition": "sleep >= 7 hours", "avg_energy_with": avgGood,
+			"avg_energy_without": avgPoor, "improvement_percent": improvement,
 		},
 	}
 }
 
-// calculateActivityMoodCorrelation calculates correlation between activity and mood
-func (r *CheckinRepository) calculateActivityMoodCorrelation(dailyData map[string]*DailyData) *CorrelationInsight {
-	var moodWithActivity []int
-	var moodWithoutActivity []int
-
-	for _, data := range dailyData {
-		if data.Feeling == nil || data.Activity == nil {
+func activityMoodCorrelation(byDate map[string]*dailyData) *CorrelationInsight {
+	var withActivity, withoutActivity []int
+	for _, d := range byDate {
+		if d.Feeling == nil || d.Activity == nil {
 			continue
 		}
-
-		if data.Activity.DurationMinutes >= 30 {
-			moodWithActivity = append(moodWithActivity, data.Feeling.Mood)
+		if d.Activity.DurationMinutes >= 30 {
+			withActivity = append(withActivity, d.Feeling.Mood)
 		} else {
-			moodWithoutActivity = append(moodWithoutActivity, data.Feeling.Mood)
+			withoutActivity = append(withoutActivity, d.Feeling.Mood)
 		}
 	}
-
-	if len(moodWithActivity) < 5 || len(moodWithoutActivity) < 5 {
+	if len(withActivity) < 5 || len(withoutActivity) < 5 {
 		return nil
 	}
-
-	avgWithActivity := average(moodWithActivity)
-	avgWithoutActivity := average(moodWithoutActivity)
-	improvement := ((avgWithActivity - avgWithoutActivity) / avgWithoutActivity) * 100
-
+	avgWith, avgWithout := average(withActivity), average(withoutActivity)
+	improvement := ((avgWith - avgWithout) / avgWithout) * 100
 	if improvement < 5 {
 		return nil
 	}
-
 	return &CorrelationInsight{
 		Type:        "activity_mood",
 		Description: fmt.Sprintf("Your mood improves by %.0f%% on active days (30+ min)", improvement),
 		Confidence:  0.78,
-		SampleSize:  len(moodWithActivity) + len(moodWithoutActivity),
+		SampleSize:  len(withActivity) + len(withoutActivity),
 		Details: map[string]interface{}{
-			"condition":           "activity >= 30 minutes",
-			"avg_mood_with":       avgWithActivity,
-			"avg_mood_without":    avgWithoutActivity,
-			"improvement_percent": improvement,
+			"condition": "activity >= 30 minutes", "avg_mood_with": avgWith,
+			"avg_mood_without": avgWithout, "improvement_percent": improvement,
 		},
 	}
 }
 
-// calculateSleepFocusCorrelation calculates correlation between sleep quality and focus
-func (r *CheckinRepository) calculateSleepFocusCorrelation(dailyData map[string]*DailyData) *CorrelationInsight {
-	var focusWithGoodSleep []int
-	var focusWithPoorSleep []int
-
-	for _, data := range dailyData {
-		if data.Feeling == nil || data.Sleep == nil {
+func sleepFocusCorrelation(byDate map[string]*dailyData) *CorrelationInsight {
+	var withGood, withPoor []int
+	for _, d := range byDate {
+		if d.Feeling == nil || d.Sleep == nil {
 			continue
 		}
-
-		if data.Sleep.SleepScore >= 80 {
-			focusWithGoodSleep = append(focusWithGoodSleep, data.Feeling.Focus)
+		if d.Sleep.SleepScore >= 80 {
+			withGood = append(withGood, d.Feeling.Focus)
 		} else {
-			focusWithPoorSleep = append(focusWithPoorSleep, data.Feeling.Focus)
+			withPoor = append(withPoor, d.Feeling.Focus)
 		}
 	}
-
-	if len(focusWithGoodSleep) < 5 || len(focusWithPoorSleep) < 5 {
+	if len(withGood) < 5 || len(withPoor) < 5 {
 		return nil
 	}
-
-	avgWithGoodSleep := average(focusWithGoodSleep)
-	avgWithPoorSleep := average(focusWithPoorSleep)
-	improvement := ((avgWithGoodSleep - avgWithPoorSleep) / avgWithPoorSleep) * 100
-
+	avgGood, avgPoor := average(withGood), average(withPoor)
+	improvement := ((avgGood - avgPoor) / avgPoor) * 100
 	if improvement < 5 {
 		return nil
 	}
-
 	return &CorrelationInsight{
 		Type:        "sleep_focus",
 		Description: fmt.Sprintf("Your focus is %.0f%% better after quality sleep (score 80+)", improvement),
 		Confidence:  0.82,
-		SampleSize:  len(focusWithGoodSleep) + len(focusWithPoorSleep),
+		SampleSize:  len(withGood) + len(withPoor),
 		Details: map[string]interface{}{
-			"condition":           "sleep_score >= 80",
-			"avg_focus_with":      avgWithGoodSleep,
-			"avg_focus_without":   avgWithPoorSleep,
-			"improvement_percent": improvement,
+			"condition": "sleep_score >= 80", "avg_focus_with": avgGood,
+			"avg_focus_without": avgPoor, "improvement_percent": improvement,
 		},
 	}
 }
 
-// average calculates the average of a slice of integers
 func average(values []int) float64 {
 	if len(values) == 0 {
 		return 0

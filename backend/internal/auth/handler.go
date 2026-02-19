@@ -1,28 +1,25 @@
-package handlers
+package auth
 
 import (
 	"encoding/json"
 	"log"
 	"net/http"
-
-	"github.com/satishthakur/health-assistant/backend/internal/auth"
-	"github.com/satishthakur/health-assistant/backend/internal/db"
 )
 
-// AuthHandler handles authentication endpoints.
-type AuthHandler struct {
-	googleVerifier *auth.GoogleVerifier
-	userRepo       *db.UserRepository
-	tokenService   *auth.TokenService
+// Handler handles authentication endpoints.
+type Handler struct {
+	googleVerifier *GoogleVerifier
+	userRepo       *UserRepository
+	tokenService   *TokenService
 }
 
-// NewAuthHandler creates a new AuthHandler.
-func NewAuthHandler(
-	googleVerifier *auth.GoogleVerifier,
-	userRepo *db.UserRepository,
-	tokenService *auth.TokenService,
-) *AuthHandler {
-	return &AuthHandler{
+// NewHandler creates a new auth Handler.
+func NewHandler(
+	googleVerifier *GoogleVerifier,
+	userRepo *UserRepository,
+	tokenService *TokenService,
+) *Handler {
+	return &Handler{
 		googleVerifier: googleVerifier,
 		userRepo:       userRepo,
 		tokenService:   tokenService,
@@ -41,7 +38,7 @@ type googleAuthResponse struct {
 }
 
 // HandleGoogleAuth handles POST /api/v1/auth/google
-func (h *AuthHandler) HandleGoogleAuth(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) HandleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
@@ -58,7 +55,6 @@ func (h *AuthHandler) HandleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify the Google ID token
 	claims, err := h.googleVerifier.VerifyIDToken(r.Context(), req.IDToken)
 	if err != nil {
 		log.Printf("Google token verification failed: %v", err)
@@ -66,7 +62,6 @@ func (h *AuthHandler) HandleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Find or create the user
 	user, err := h.userRepo.FindOrCreateUserByGoogleID(r.Context(), claims.Sub, claims.Email, claims.Name)
 	if err != nil {
 		log.Printf("Failed to find or create user: %v", err)
@@ -74,7 +69,6 @@ func (h *AuthHandler) HandleGoogleAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Issue a JWT
 	token, err := h.tokenService.GenerateToken(user.ID)
 	if err != nil {
 		log.Printf("Failed to generate token: %v", err)

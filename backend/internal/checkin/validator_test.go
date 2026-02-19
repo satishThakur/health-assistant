@@ -1,20 +1,20 @@
-package validation
+package checkin
 
 import (
 	"strings"
 	"testing"
 )
 
-func TestValidateCheckinPayload(t *testing.T) {
+func TestValidatePayload(t *testing.T) {
 	tests := []struct {
 		name    string
-		payload *CheckinPayload
+		payload *Payload
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "valid payload with all fields",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   8,
 				Mood:     7,
 				Focus:    9,
@@ -25,7 +25,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "valid payload without notes",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   5,
 				Mood:     6,
 				Focus:    7,
@@ -35,7 +35,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "valid payload with min values",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   1,
 				Mood:     1,
 				Focus:    1,
@@ -45,7 +45,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "valid payload with max values",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   10,
 				Mood:     10,
 				Focus:    10,
@@ -61,7 +61,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "energy too low",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   0,
 				Mood:     7,
 				Focus:    8,
@@ -72,7 +72,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "energy too high",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   11,
 				Mood:     7,
 				Focus:    8,
@@ -83,7 +83,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "mood too low",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   7,
 				Mood:     -1,
 				Focus:    8,
@@ -94,7 +94,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "mood too high",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   7,
 				Mood:     12,
 				Focus:    8,
@@ -105,7 +105,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "focus too low",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   7,
 				Mood:     8,
 				Focus:    0,
@@ -116,7 +116,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "focus too high",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   7,
 				Mood:     8,
 				Focus:    15,
@@ -127,7 +127,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "physical too low",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   7,
 				Mood:     8,
 				Focus:    9,
@@ -138,7 +138,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "physical too high",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   7,
 				Mood:     8,
 				Focus:    9,
@@ -149,7 +149,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "notes too long",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   7,
 				Mood:     8,
 				Focus:    9,
@@ -161,7 +161,7 @@ func TestValidateCheckinPayload(t *testing.T) {
 		},
 		{
 			name: "notes exactly 1000 characters",
-			payload: &CheckinPayload{
+			payload: &Payload{
 				Energy:   7,
 				Mood:     8,
 				Focus:    9,
@@ -174,19 +174,19 @@ func TestValidateCheckinPayload(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := ValidateCheckinPayload(tt.payload)
+			err := ValidatePayload(tt.payload)
 
 			if tt.wantErr {
 				if err == nil {
-					t.Errorf("ValidateCheckinPayload() expected error but got nil")
+					t.Errorf("ValidatePayload() expected error but got nil")
 					return
 				}
 				if tt.errMsg != "" && !strings.Contains(err.Error(), tt.errMsg) {
-					t.Errorf("ValidateCheckinPayload() error = %v, want error containing %v", err, tt.errMsg)
+					t.Errorf("ValidatePayload() error = %v, want error containing %v", err, tt.errMsg)
 				}
 			} else {
 				if err != nil {
-					t.Errorf("ValidateCheckinPayload() unexpected error = %v", err)
+					t.Errorf("ValidatePayload() unexpected error = %v", err)
 				}
 			}
 		})

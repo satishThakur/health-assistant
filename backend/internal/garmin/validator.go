@@ -1,54 +1,54 @@
-package validation
+package garmin
 
 import (
 	"errors"
 	"time"
 )
 
-// GarminSleepPayload represents the incoming sleep data from Python scheduler
-type GarminSleepPayload struct {
+// SleepPayload represents the incoming sleep data from Python scheduler.
+type SleepPayload struct {
 	UserID    string                 `json:"user_id"`
 	Date      string                 `json:"date"`
 	SleepData map[string]interface{} `json:"sleep_data"`
 }
 
-// GarminActivityPayload represents the incoming activity data from Python scheduler
-type GarminActivityPayload struct {
+// ActivityPayload represents the incoming activity data from Python scheduler.
+type ActivityPayload struct {
 	UserID       string                 `json:"user_id"`
 	Date         string                 `json:"date"`
 	ActivityData map[string]interface{} `json:"activity_data"`
 }
 
-// GarminHRVPayload represents the incoming HRV data from Python scheduler
-type GarminHRVPayload struct {
+// HRVPayload represents the incoming HRV data from Python scheduler.
+type HRVPayload struct {
 	UserID  string                 `json:"user_id"`
 	Date    string                 `json:"date"`
 	HRVData map[string]interface{} `json:"hrv_data"`
 }
 
-// GarminStressPayload represents the incoming stress data from Python scheduler
-type GarminStressPayload struct {
+// StressPayload represents the incoming stress data from Python scheduler.
+type StressPayload struct {
 	UserID     string                 `json:"user_id"`
 	Date       string                 `json:"date"`
 	StressData map[string]interface{} `json:"stress_data"`
 }
 
-// GarminDailyStatsPayload represents the incoming daily stats from Python scheduler
-type GarminDailyStatsPayload struct {
+// DailyStatsPayload represents the incoming daily stats from Python scheduler.
+type DailyStatsPayload struct {
 	UserID         string                 `json:"user_id"`
 	Date           string                 `json:"date"`
 	DailyStatsData map[string]interface{} `json:"daily_stats_data"`
 }
 
-// GarminBodyBatteryPayload represents the incoming body battery data from Python scheduler
-type GarminBodyBatteryPayload struct {
+// BodyBatteryPayload represents the incoming body battery data from Python scheduler.
+type BodyBatteryPayload struct {
 	UserID          string                 `json:"user_id"`
 	Date            string                 `json:"date"`
 	BodyBatteryData map[string]interface{} `json:"body_battery_data"`
 }
 
-// ValidateSleepPayload validates the sleep data payload
-func ValidateSleepPayload(payload *GarminSleepPayload) error {
+// ValidateSleepPayload validates the sleep data payload.
+func ValidateSleepPayload(payload *SleepPayload) error {
 	if payload.UserID == "" {
 		return errors.New("user_id is required")
 	}
@@ -57,7 +57,6 @@ func ValidateSleepPayload(payload *GarminSleepPayload) error {
 		return errors.New("date is required")
 	}
 
-	// Validate date format
 	if _, err := time.Parse("2006-01-02", payload.Date); err != nil {
 		return errors.New("date must be in YYYY-MM-DD format")
 	}
@@ -66,13 +65,11 @@ func ValidateSleepPayload(payload *GarminSleepPayload) error {
 		return errors.New("sleep_data is required")
 	}
 
-	// Validate required sleep fields
 	sleepTime, ok := getFloat64(payload.SleepData, "sleep_time_seconds")
 	if !ok || sleepTime <= 0 {
 		return errors.New("sleep_time_seconds must be a positive number")
 	}
 
-	// Validate sleep end timestamp if present
 	if endTimestamp, exists := payload.SleepData["sleep_end_timestamp_gmt"]; exists {
 		if str, ok := endTimestamp.(string); ok {
 			if _, err := time.Parse(time.RFC3339, str); err != nil {
@@ -84,8 +81,8 @@ func ValidateSleepPayload(payload *GarminSleepPayload) error {
 	return nil
 }
 
-// ValidateActivityPayload validates the activity data payload
-func ValidateActivityPayload(payload *GarminActivityPayload) error {
+// ValidateActivityPayload validates the activity data payload.
+func ValidateActivityPayload(payload *ActivityPayload) error {
 	if payload.UserID == "" {
 		return errors.New("user_id is required")
 	}
@@ -94,7 +91,6 @@ func ValidateActivityPayload(payload *GarminActivityPayload) error {
 		return errors.New("date is required")
 	}
 
-	// Validate date format
 	if _, err := time.Parse("2006-01-02", payload.Date); err != nil {
 		return errors.New("date must be in YYYY-MM-DD format")
 	}
@@ -103,7 +99,6 @@ func ValidateActivityPayload(payload *GarminActivityPayload) error {
 		return errors.New("activity_data is required")
 	}
 
-	// Validate required activity fields
 	activityType, ok := payload.ActivityData["activity_type"].(string)
 	if !ok || activityType == "" {
 		return errors.New("activity_type must be a non-empty string")
@@ -114,7 +109,6 @@ func ValidateActivityPayload(payload *GarminActivityPayload) error {
 		return errors.New("duration_seconds must be a positive number")
 	}
 
-	// Validate start time if present
 	if startTime, exists := payload.ActivityData["start_time_gmt"]; exists {
 		if str, ok := startTime.(string); ok {
 			if _, err := time.Parse(time.RFC3339, str); err != nil {
@@ -126,8 +120,8 @@ func ValidateActivityPayload(payload *GarminActivityPayload) error {
 	return nil
 }
 
-// ValidateHRVPayload validates the HRV data payload
-func ValidateHRVPayload(payload *GarminHRVPayload) error {
+// ValidateHRVPayload validates the HRV data payload.
+func ValidateHRVPayload(payload *HRVPayload) error {
 	if payload.UserID == "" {
 		return errors.New("user_id is required")
 	}
@@ -136,7 +130,6 @@ func ValidateHRVPayload(payload *GarminHRVPayload) error {
 		return errors.New("date is required")
 	}
 
-	// Validate date format
 	if _, err := time.Parse("2006-01-02", payload.Date); err != nil {
 		return errors.New("date must be in YYYY-MM-DD format")
 	}
@@ -145,7 +138,6 @@ func ValidateHRVPayload(payload *GarminHRVPayload) error {
 		return errors.New("hrv_data is required")
 	}
 
-	// Validate HRV value
 	hrvValue, ok := getFloat64(payload.HRVData, "average_hrv")
 	if !ok || hrvValue < 0 {
 		return errors.New("average_hrv must be a non-negative number")
@@ -154,8 +146,8 @@ func ValidateHRVPayload(payload *GarminHRVPayload) error {
 	return nil
 }
 
-// ValidateStressPayload validates the stress data payload
-func ValidateStressPayload(payload *GarminStressPayload) error {
+// ValidateStressPayload validates the stress data payload.
+func ValidateStressPayload(payload *StressPayload) error {
 	if payload.UserID == "" {
 		return errors.New("user_id is required")
 	}
@@ -164,7 +156,6 @@ func ValidateStressPayload(payload *GarminStressPayload) error {
 		return errors.New("date is required")
 	}
 
-	// Validate date format
 	if _, err := time.Parse("2006-01-02", payload.Date); err != nil {
 		return errors.New("date must be in YYYY-MM-DD format")
 	}
@@ -173,7 +164,6 @@ func ValidateStressPayload(payload *GarminStressPayload) error {
 		return errors.New("stress_data is required")
 	}
 
-	// Validate stress level if present
 	if stressLevel, exists := payload.StressData["average_stress_level"]; exists {
 		if level, ok := getFloat64OrInt(stressLevel); ok {
 			if level < 0 || level > 100 {
@@ -185,8 +175,8 @@ func ValidateStressPayload(payload *GarminStressPayload) error {
 	return nil
 }
 
-// ValidateDailyStatsPayload validates the daily stats payload
-func ValidateDailyStatsPayload(payload *GarminDailyStatsPayload) error {
+// ValidateDailyStatsPayload validates the daily stats payload.
+func ValidateDailyStatsPayload(payload *DailyStatsPayload) error {
 	if payload.UserID == "" {
 		return errors.New("user_id is required")
 	}
@@ -195,7 +185,6 @@ func ValidateDailyStatsPayload(payload *GarminDailyStatsPayload) error {
 		return errors.New("date is required")
 	}
 
-	// Validate date format
 	if _, err := time.Parse("2006-01-02", payload.Date); err != nil {
 		return errors.New("date must be in YYYY-MM-DD format")
 	}
@@ -204,7 +193,6 @@ func ValidateDailyStatsPayload(payload *GarminDailyStatsPayload) error {
 		return errors.New("daily_stats_data is required")
 	}
 
-	// At least steps should be present
 	steps, ok := getFloat64(payload.DailyStatsData, "steps")
 	if !ok || steps < 0 {
 		return errors.New("steps must be a non-negative number")
@@ -213,8 +201,8 @@ func ValidateDailyStatsPayload(payload *GarminDailyStatsPayload) error {
 	return nil
 }
 
-// ValidateBodyBatteryPayload validates the body battery payload
-func ValidateBodyBatteryPayload(payload *GarminBodyBatteryPayload) error {
+// ValidateBodyBatteryPayload validates the body battery payload.
+func ValidateBodyBatteryPayload(payload *BodyBatteryPayload) error {
 	if payload.UserID == "" {
 		return errors.New("user_id is required")
 	}
@@ -223,7 +211,6 @@ func ValidateBodyBatteryPayload(payload *GarminBodyBatteryPayload) error {
 		return errors.New("date is required")
 	}
 
-	// Validate date format
 	if _, err := time.Parse("2006-01-02", payload.Date); err != nil {
 		return errors.New("date must be in YYYY-MM-DD format")
 	}
@@ -232,7 +219,6 @@ func ValidateBodyBatteryPayload(payload *GarminBodyBatteryPayload) error {
 		return errors.New("body_battery_data is required")
 	}
 
-	// Validate charged/drained values
 	charged, okCharged := getFloat64(payload.BodyBatteryData, "charged")
 	drained, okDrained := getFloat64(payload.BodyBatteryData, "drained")
 
@@ -243,7 +229,6 @@ func ValidateBodyBatteryPayload(payload *GarminBodyBatteryPayload) error {
 	return nil
 }
 
-// Helper function to safely extract float64 from interface{}
 func getFloat64(data map[string]interface{}, key string) (float64, bool) {
 	val, exists := data[key]
 	if !exists {
@@ -264,7 +249,6 @@ func getFloat64(data map[string]interface{}, key string) (float64, bool) {
 	}
 }
 
-// Helper function to extract float64 or int from interface{}
 func getFloat64OrInt(val interface{}) (float64, bool) {
 	switch v := val.(type) {
 	case float64:

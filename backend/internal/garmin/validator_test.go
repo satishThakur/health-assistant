@@ -1,4 +1,4 @@
-package validation
+package garmin
 
 import (
 	"testing"
@@ -7,12 +7,12 @@ import (
 func TestValidateSleepPayload(t *testing.T) {
 	tests := []struct {
 		name    string
-		payload *GarminSleepPayload
+		payload *SleepPayload
 		wantErr bool
 	}{
 		{
 			name: "valid payload",
-			payload: &GarminSleepPayload{
+			payload: &SleepPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "2026-01-28",
 				SleepData: map[string]interface{}{
@@ -24,7 +24,7 @@ func TestValidateSleepPayload(t *testing.T) {
 		},
 		{
 			name: "missing user_id",
-			payload: &GarminSleepPayload{
+			payload: &SleepPayload{
 				UserID: "",
 				Date:   "2026-01-28",
 				SleepData: map[string]interface{}{
@@ -35,7 +35,7 @@ func TestValidateSleepPayload(t *testing.T) {
 		},
 		{
 			name: "missing date",
-			payload: &GarminSleepPayload{
+			payload: &SleepPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "",
 				SleepData: map[string]interface{}{
@@ -46,7 +46,7 @@ func TestValidateSleepPayload(t *testing.T) {
 		},
 		{
 			name: "invalid date format",
-			payload: &GarminSleepPayload{
+			payload: &SleepPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "01/28/2026",
 				SleepData: map[string]interface{}{
@@ -57,7 +57,7 @@ func TestValidateSleepPayload(t *testing.T) {
 		},
 		{
 			name: "missing sleep_data",
-			payload: &GarminSleepPayload{
+			payload: &SleepPayload{
 				UserID:    "00000000-0000-0000-0000-000000000001",
 				Date:      "2026-01-28",
 				SleepData: nil,
@@ -66,7 +66,7 @@ func TestValidateSleepPayload(t *testing.T) {
 		},
 		{
 			name: "invalid sleep_time_seconds",
-			payload: &GarminSleepPayload{
+			payload: &SleepPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "2026-01-28",
 				SleepData: map[string]interface{}{
@@ -90,12 +90,12 @@ func TestValidateSleepPayload(t *testing.T) {
 func TestValidateActivityPayload(t *testing.T) {
 	tests := []struct {
 		name    string
-		payload *GarminActivityPayload
+		payload *ActivityPayload
 		wantErr bool
 	}{
 		{
 			name: "valid payload",
-			payload: &GarminActivityPayload{
+			payload: &ActivityPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "2026-01-28",
 				ActivityData: map[string]interface{}{
@@ -107,7 +107,7 @@ func TestValidateActivityPayload(t *testing.T) {
 		},
 		{
 			name: "missing activity_type",
-			payload: &GarminActivityPayload{
+			payload: &ActivityPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "2026-01-28",
 				ActivityData: map[string]interface{}{
@@ -118,7 +118,7 @@ func TestValidateActivityPayload(t *testing.T) {
 		},
 		{
 			name: "invalid duration",
-			payload: &GarminActivityPayload{
+			payload: &ActivityPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "2026-01-28",
 				ActivityData: map[string]interface{}{
@@ -143,12 +143,12 @@ func TestValidateActivityPayload(t *testing.T) {
 func TestValidateHRVPayload(t *testing.T) {
 	tests := []struct {
 		name    string
-		payload *GarminHRVPayload
+		payload *HRVPayload
 		wantErr bool
 	}{
 		{
 			name: "valid payload",
-			payload: &GarminHRVPayload{
+			payload: &HRVPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "2026-01-28",
 				HRVData: map[string]interface{}{
@@ -159,7 +159,7 @@ func TestValidateHRVPayload(t *testing.T) {
 		},
 		{
 			name: "negative hrv",
-			payload: &GarminHRVPayload{
+			payload: &HRVPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "2026-01-28",
 				HRVData: map[string]interface{}{
@@ -183,12 +183,12 @@ func TestValidateHRVPayload(t *testing.T) {
 func TestValidateStressPayload(t *testing.T) {
 	tests := []struct {
 		name    string
-		payload *GarminStressPayload
+		payload *StressPayload
 		wantErr bool
 	}{
 		{
 			name: "valid payload",
-			payload: &GarminStressPayload{
+			payload: &StressPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "2026-01-28",
 				StressData: map[string]interface{}{
@@ -199,7 +199,7 @@ func TestValidateStressPayload(t *testing.T) {
 		},
 		{
 			name: "stress level too high",
-			payload: &GarminStressPayload{
+			payload: &StressPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "2026-01-28",
 				StressData: map[string]interface{}{
@@ -210,7 +210,7 @@ func TestValidateStressPayload(t *testing.T) {
 		},
 		{
 			name: "negative stress level",
-			payload: &GarminStressPayload{
+			payload: &StressPayload{
 				UserID: "00000000-0000-0000-0000-000000000001",
 				Date:   "2026-01-28",
 				StressData: map[string]interface{}{
@@ -233,11 +233,11 @@ func TestValidateStressPayload(t *testing.T) {
 
 func TestGetFloat64(t *testing.T) {
 	tests := []struct {
-		name    string
-		data    map[string]interface{}
-		key     string
-		want    float64
-		wantOk  bool
+		name   string
+		data   map[string]interface{}
+		key    string
+		want   float64
+		wantOk bool
 	}{
 		{
 			name:   "float64 value",

@@ -1,24 +1,24 @@
-package db
+package auth
 
 import (
 	"context"
 	"fmt"
 
+	"github.com/satishthakur/health-assistant/backend/internal/db"
 	"github.com/satishthakur/health-assistant/backend/internal/models"
 )
 
 // UserRepository handles database operations for users.
 type UserRepository struct {
-	db *Database
+	db *db.Database
 }
 
 // NewUserRepository creates a new UserRepository.
-func NewUserRepository(db *Database) *UserRepository {
-	return &UserRepository{db: db}
+func NewUserRepository(database *db.Database) *UserRepository {
+	return &UserRepository{db: database}
 }
 
 // FindOrCreateUserByGoogleID upserts a user based on their Google ID.
-// On conflict it updates email and display_name to reflect the latest Google profile.
 func (r *UserRepository) FindOrCreateUserByGoogleID(ctx context.Context, googleID, email, displayName string) (*models.User, error) {
 	query := `
 		INSERT INTO users (email, google_id, display_name)
