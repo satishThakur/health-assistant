@@ -3,6 +3,18 @@
 ## Project Overview
 Personal health assistant that syncs Garmin wearable data, accepts daily check-ins, and surfaces correlations between metrics.
 
+## Current Feature: Daily Check-in & Health Correlation (Phase 1 MVP)
+**Goal:** User opens app, does a 30-second check-in (energy/mood/focus/physical 1–10), sees today's Garmin data alongside it, and after 7+ days gets insights like "Your energy is 40% higher when you sleep 7+ hours."
+
+**Status (2026-02-19):**
+- ✅ Backend: all API endpoints, Garmin ingestion, JWT auth, feature-based package structure
+- ✅ Flutter: login screen (Google Sign-In), check-in form, dashboard, trends, insights screens
+- ✅ Platform config: Android + iOS Google Sign-In setup (manual: download real google-services.json)
+- ❌ Next priorities: offline check-in support, daily notifications, celebration animation on submit
+- ❌ Not started: deployment (AWS + TestFlight/Play Store)
+
+**Full feature status:** see `FEATURE_PLAN.md`
+
 ## Services (2 total)
 | Service | Language | Port | Entry Point |
 |---------|----------|------|-------------|
