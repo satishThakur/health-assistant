@@ -1,0 +1,30 @@
+{
+  "_comment": "Download the real google-services.json from Google Cloud Console → Your Project → Android app",
+  "_steps": [
+    "1. Go to https://console.cloud.google.com → Select your project",
+    "2. APIs & Services → Credentials → Create Credential → OAuth Client ID → Android",
+    "3. Package name: com.satishthakur.healthassistant",
+    "4. Get SHA-1: cd android && ./gradlew signingReport",
+    "5. Download google-services.json and place it at android/app/google-services.json",
+    "6. Also create a Web OAuth Client ID — use that as GOOGLE_CLIENT_ID backend env var"
+  ],
+  "project_info": {
+    "project_number": "REPLACE",
+    "project_id": "REPLACE",
+    "storage_bucket": "REPLACE"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "REPLACE",
+        "android_client_info": {
+          "package_name": "com.satishthakur.healthassistant"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [{ "current_key": "REPLACE" }],
+      "services": { "appinvite_service": { "other_platform_oauth_client": [] } }
+    }
+  ],
+  "configuration_version": "1"
+}

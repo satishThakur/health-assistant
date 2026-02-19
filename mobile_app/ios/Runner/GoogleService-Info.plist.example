@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  STEPS TO GENERATE THE REAL FILE:
+  1. Go to https://console.cloud.google.com → Select your project
+  2. APIs & Services → Credentials → Create Credential → OAuth Client ID → iOS
+  3. Bundle ID: com.satishthakur.healthassistant
+  4. Download GoogleService-Info.plist and place it at ios/Runner/GoogleService-Info.plist
+  5. Copy the REVERSED_CLIENT_ID value from this file into ios/Runner/Info.plist
+     (replace "REPLACE_WITH_REVERSED_CLIENT_ID" with the actual value)
+-->
+<plist version="1.0">
+<dict>
+  <key>CLIENT_ID</key>
+  <string>REPLACE</string>
+  <key>REVERSED_CLIENT_ID</key>
+  <string>REPLACE</string>
+  <key>BUNDLE_ID</key>
+  <string>com.satishthakur.healthassistant</string>
+  <key>PROJECT_ID</key>
+  <string>REPLACE</string>
+  <key>STORAGE_BUCKET</key>
+  <string>REPLACE</string>
+  <key>GOOGLE_APP_ID</key>
+  <string>REPLACE</string>
+</dict>
+</plist>
