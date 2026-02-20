@@ -1,6 +1,21 @@
+import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../data/checkin_repository.dart';
 import '../domain/checkin_model.dart';
+import 'sync_provider.dart';
+
+// Result type for submitCheckin
+sealed class SubmitResult {}
+
+class SubmitSuccess extends SubmitResult {}
+
+class SubmitSavedOffline extends SubmitResult {}
+
+class SubmitError extends SubmitResult {
+  final String message;
+  SubmitError(this.message);
+}
 
 // State for check-in form
 class CheckinFormState {
@@ -56,8 +71,9 @@ class CheckinFormState {
 // Check-in form controller
 class CheckinFormNotifier extends StateNotifier<CheckinFormState> {
   final CheckinRepository _repository;
+  final Ref _ref;
 
-  CheckinFormNotifier(this._repository) : super(CheckinFormState());
+  CheckinFormNotifier(this._repository, this._ref) : super(CheckinFormState());
 
   void updateEnergy(int value) {
     state = state.copyWith(energy: value, error: null);
@@ -79,7 +95,7 @@ class CheckinFormNotifier extends StateNotifier<CheckinFormState> {
     state = state.copyWith(notes: value, error: null);
   }
 
-  Future<bool> submitCheckin() async {
+  Future<SubmitResult> submitCheckin() async {
     state = state.copyWith(isSubmitting: true, error: null);
 
     try {
@@ -88,21 +104,43 @@ class CheckinFormNotifier extends StateNotifier<CheckinFormState> {
 
       // Reset form after successful submission
       state = CheckinFormState();
-      return true;
+      return SubmitSuccess();
+    } on DioException catch (e) {
+      if (_isNetworkError(e)) {
+        final checkin = state.toCheckinModel();
+        await _queueOffline(checkin);
+        state = CheckinFormState();
+        return SubmitSavedOffline();
+      }
+      final msg = e.response?.data?.toString() ?? e.message ?? 'Network error';
+      state = state.copyWith(isSubmitting: false, error: msg);
+      return SubmitError(msg);
     } catch (e) {
-      state = state.copyWith(
-        isSubmitting: false,
-        error: e.toString(),
-      );
-      return false;
+      final msg = e.toString();
+      state = state.copyWith(isSubmitting: false, error: msg);
+      return SubmitError(msg);
     }
+  }
+
+  bool _isNetworkError(DioException e) {
+    return e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.connectionTimeout ||
+        e.type == DioExceptionType.receiveTimeout ||
+        e.type == DioExceptionType.sendTimeout ||
+        (e.type == DioExceptionType.unknown && e.response == null);
+  }
+
+  Future<void> _queueOffline(CheckinModel checkin) async {
+    final queueService = _ref.read(offlineQueueServiceProvider);
+    await queueService.enqueue(checkin);
+    _ref.read(pendingCountProvider.notifier).update((n) => n + 1);
   }
 }
 
 final checkinFormProvider =
     StateNotifierProvider<CheckinFormNotifier, CheckinFormState>((ref) {
   final repository = ref.watch(checkinRepositoryProvider);
-  return CheckinFormNotifier(repository);
+  return CheckinFormNotifier(repository, ref);
 });
 
 // Latest check-in provider

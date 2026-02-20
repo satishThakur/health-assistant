@@ -17,6 +17,9 @@ class AppConfig {
   // Default Values
   static const String defaultUserId = '00000000-0000-0000-0000-000000000001';
 
+  // Hive Box Names
+  static const String pendingCheckinsBox = 'pending_checkins';
+
   // Feature Flags
   static const bool enableOfflineMode = true;
   static const bool enableNotifications = true;

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/config/theme.dart';
 import '../providers/checkin_provider.dart';
+import '../providers/sync_provider.dart';
 import 'widgets/feeling_slider.dart';
 
 class CheckinScreen extends ConsumerWidget {
@@ -129,23 +131,63 @@ class CheckinScreen extends ConsumerWidget {
                   ),
                 ),
 
+              // Pending sync banner
+              Consumer(
+                builder: (ctx, ref, _) {
+                  final pending = ref.watch(pendingCountProvider);
+                  if (pending == 0) return const SizedBox.shrink();
+                  return Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.cloud_off, color: Colors.orange),
+                        const SizedBox(width: 8),
+                        Text('$pending check-in(s) pending sync'),
+                      ],
+                    ),
+                  );
+                },
+              ),
+
               // Submit Button
               ElevatedButton(
                 onPressed: formState.isSubmitting
                     ? null
                     : () async {
-                        final success = await ref
+                        final result = await ref
                             .read(checkinFormProvider.notifier)
                             .submitCheckin();
 
-                        if (success && context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Check-in saved! 🎉'),
-                              backgroundColor: Colors.green,
-                            ),
-                          );
-                          context.pop();
+                        if (!context.mounted) return;
+
+                        switch (result) {
+                          case SubmitSuccess():
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Check-in saved! 🎉'),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                            context.pop();
+                          case SubmitSavedOffline():
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Saved locally — will sync when back online',
+                                ),
+                                backgroundColor: Colors.orange,
+                              ),
+                            );
+                            context.pop();
+                          case SubmitError():
+                            // Error already shown via formState.error — no pop
+                            break;
                         }
                       },
                 child: formState.isSubmitting
