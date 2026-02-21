@@ -9,6 +9,7 @@ import '../../features/checkin/presentation/checkin_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/dashboard/presentation/trends_screen.dart';
 import '../../features/insights/presentation/insights_screen.dart';
+import '../../features/settings/presentation/settings_screen.dart';
 
 class _AuthChangeNotifier extends ChangeNotifier {
   _AuthChangeNotifier(Ref ref) {
@@ -57,6 +58,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: '/insights',
         name: 'insights',
         builder: (context, state) => const InsightsScreen(),
+      ),
+      GoRoute(
+        path: '/settings',
+        name: 'settings',
+        builder: (context, state) => const SettingsScreen(),
       ),
     ],
     errorBuilder: (context, state) => Scaffold(

@@ -20,6 +20,10 @@ class AppConfig {
   // Hive Box Names
   static const String pendingCheckinsBox = 'pending_checkins';
 
+  // Notification Preference Keys
+  static const String notificationHourKey = 'notification_hour';
+  static const String notificationMinuteKey = 'notification_minute';
+
   // Feature Flags
   static const bool enableOfflineMode = true;
   static const bool enableNotifications = true;
