@@ -5,6 +5,11 @@
 **Last Updated:** 2026-02-22
 **Status:** Planning
 
+## Decided
+- **Domain:** `dailypulse.app`
+- **API URL:** `api.dailypulse.app`
+- **Bundle ID:** `app.dailypulse.health`
+
 ---
 
 ## Prerequisites Checklist
@@ -13,7 +18,7 @@
 |------|--------|-------|
 | Apple Developer account | ❌ Need to create | developer.apple.com, $99/yr, **approval takes 24-48h — do this first** |
 | AWS account | ✅ Exists | |
-| Domain name | ❌ Need to purchase | ~$12/yr for .com via Route53 or any registrar |
+| Domain name | ❌ Need to purchase | dailypulse.app — ~$20/yr, purchase via Route53 or Namecheap |
 | Google OAuth (production) | ❌ Need iOS client | Currently dev mode (empty GOOGLE_CLIENT_ID) |
 | Garmin scraper | ✅ Working locally | Just needs to move to AWS |
 
@@ -63,10 +68,10 @@ Currently backend runs with `GOOGLE_CLIENT_ID=""` (dev mode, skips audience chec
 1. **Google Cloud Console** → select your project (or create one)
 2. APIs & Services → Credentials → Create OAuth 2.0 Client ID
    - Type: **iOS**
-   - Bundle ID: `com.yourdomain.healthassistant` (must match `mobile_app/ios/Runner.xcodeproj`)
+   - Bundle ID: `app.dailypulse.health` (must match `mobile_app/ios/Runner.xcodeproj`)
 3. Download `GoogleService-Info.plist` → place in `mobile_app/ios/Runner/` (gitignored)
 4. Note the **client ID** from the plist → this becomes `GOOGLE_CLIENT_ID` env var on backend
-5. APIs & Services → OAuth consent screen → add your domain to authorized domains (once you have it)
+5. APIs & Services → OAuth consent screen → add dailypulse.app to authorized domains (once you have it)
 
 ### Files affected
 - `mobile_app/ios/Runner/GoogleService-Info.plist` (gitignored, download from console)
@@ -89,15 +94,15 @@ Currently backend runs with `GOOGLE_CLIENT_ID=""` (dev mode, skips audience chec
 3. Install Docker + docker-compose on instance
 
 ### 2b. Domain DNS
-1. Create Route53 hosted zone for your domain
-2. Add A record: `api.yourdomain.com` → Elastic IP
+1. Create Route53 hosted zone for dailypulse.app
+2. Add A record: `api.dailypulse.app` → Elastic IP
 3. Update domain registrar NS records to Route53 (if domain not in Route53)
 
 ### 2c. SSL Certificate (Nginx + Let's Encrypt)
 ```bash
 # On EC2
 sudo apt install nginx certbot python3-certbot-nginx
-sudo certbot --nginx -d api.yourdomain.com
+sudo certbot --nginx -d api.dailypulse.app
 # Auto-renews via systemd timer
 ```
 
@@ -177,7 +182,7 @@ Since you're on Linux, builds happen in **GitHub Actions macOS runners**.
 ### 5a. Apple Developer Setup (after account approved)
 1. Xcode → Preferences → Accounts → add Apple ID
    - **OR** do this via App Store Connect web + GitHub Actions secrets (preferred for CI)
-2. Create App ID: `com.yourdomain.healthassistant`
+2. Create App ID: `app.dailypulse.health`
 3. Create Distribution Certificate (`.p12`) + Provisioning Profile (`.mobileprovision`)
 4. Export both → store as GitHub Secrets (base64 encoded)
 
@@ -189,7 +194,7 @@ Since you're on Linux, builds happen in **GitHub Actions macOS runners**.
   1. `flutter pub get`
   2. Decode + install signing cert + provisioning profile
   3. Set `GoogleService-Info.plist` from GitHub Secret
-  4. Set `API_BASE_URL=https://api.yourdomain.com` via `--dart-define`
+  4. Set `API_BASE_URL=https://api.dailypulse.app` via `--dart-define`
   5. `flutter build ipa --release`
   6. Upload to TestFlight via `xcrun altool` or `fastlane pilot`
 
@@ -213,7 +218,7 @@ static const String baseUrl = String.fromEnvironment(
   defaultValue: 'http://localhost:8083',  // dev
 );
 ```
-Pass `--dart-define=API_BASE_URL=https://api.yourdomain.com` at build time.
+Pass `--dart-define=API_BASE_URL=https://api.dailypulse.app` (no code changes needed) at build time.
 No code changes needed — already set up correctly.
 
 ---
@@ -247,10 +252,10 @@ No code changes needed — already set up correctly.
 
 ## Open Questions
 
-1. What bundle ID do you want? (e.g. `com.satishthakur.healthassistant`) — needed for Apple ID + Google OAuth
-2. What domain? (needed for OAuth consent screen + SSL)
+1. ~~Bundle ID~~ ✅ `app.dailypulse.health`
+2. ~~Domain~~ ✅ `dailypulse.app`
 3. Do you want a separate `staging` environment or go straight to prod?
 
 ---
 
-**Outcome:** App installed on your iPhone/iPad via TestFlight, backend on AWS at `api.yourdomain.com`, Garmin syncing hourly.
+**Outcome:** App installed on your iPhone/iPad via TestFlight, backend on AWS at `api.dailypulse.app`, Garmin syncing hourly.
