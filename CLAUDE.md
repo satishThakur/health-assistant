@@ -58,6 +58,9 @@ Located at `scripts/db/migrations/`. Run in order (001 → 005+).
 | `GARMIN_INGEST_SECRET` | backend + scripts | shared secret |
 
 ## Updating CLAUDE.md Files
-- On every commit: update the **local** `CLAUDE.md` for the module you changed
-- If you add a new package, new env var, or change architecture: update this root file too
+**MANDATORY after every commit — do not skip:**
+- Update `mobile_app/CLAUDE.md` if any Flutter files changed
+- Update `backend/CLAUDE.md` if any Go files changed
+- Update this root file if architecture, env vars, services, or feature status changed
 - Keep entries concise — these files are loaded into every session context
+- Update the status checklist above when features are completed
