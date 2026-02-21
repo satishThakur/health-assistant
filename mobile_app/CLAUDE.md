@@ -26,14 +26,28 @@ lib/core/
   network/api_client.dart          # Dio instance
   network/api_interceptor.dart     # injects Bearer token, signs out on 401
   network/connectivity_service.dart # connectivity_plus wrapper — isOnline / onStatusChange
+  notifications/notification_service.dart  # flutter_local_notifications; plain class, pre-ProviderScope init
   routing/app_router.dart
-  config/app_config.dart           # base URL, storage keys, pendingCheckinsBox
+  config/app_config.dart           # base URL, storage keys, pendingCheckinsBox, notificationHourKey/MinuteKey
+lib/features/
+  settings/
+    providers/notification_provider.dart   # NotificationTimeNotifier (default 9 PM), persists to SharedPreferences
+    presentation/settings_screen.dart      # time picker; reachable via /settings
 ```
 
 ## State Management
 - **Riverpod** (`flutter_riverpod`) — all providers in `features/*/providers/`
 - `authProvider` = `StateNotifierProvider<AuthNotifier, AuthState>`
 - `authTokenProvider` = derived `Provider<String?>` — returns token if authenticated
+
+## Daily Notifications
+- `NotificationService` — plain class (no Riverpod), initialized before `ProviderScope` in `main.dart`, injected via `overrideWithValue`
+- `setRouter(GoRouter)` called every `app.dart` build so tap-to-navigate always works
+- Permissions requested on first `AuthLoading → AuthAuthenticated` transition
+- `NotificationTimeNotifier._load()` reschedules on every cold start (survives restarts)
+- Android: `USE_EXACT_ALARM` + `ScheduledNotificationBootReceiver` (survives reboots)
+- iOS: no `Info.plist` edits needed (plugin injects required keys)
+- Settings screen at `/settings`, gear icon in Dashboard AppBar
 
 ## Offline Check-in
 - `OfflineQueueService` stores check-ins as JSON in a Hive `Box<String>` (key = ISO8601 timestamp)
