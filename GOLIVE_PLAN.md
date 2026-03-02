@@ -16,9 +16,9 @@
 
 | Item | Status | Notes |
 |------|--------|-------|
-| Apple Developer account | ❌ Need to create | developer.apple.com, $99/yr, **approval takes 24-48h — do this first** |
+| Apple Developer account | ✅ Approved | |
 | AWS account | ✅ Exists | |
-| Domain name | ❌ Need to purchase | dailypulse.app — ~$20/yr, purchase via Route53 or Namecheap |
+| Domain name | ⏳ In progress | dailypulse.app — purchase via Route53 or Namecheap |
 | Google OAuth (production) | ❌ Need iOS client | Currently dev mode (empty GOOGLE_CLIENT_ID) |
 | Garmin scraper | ✅ Working locally | Just needs to move to AWS |
 

@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.satishthakur.healthassistant"
+    namespace = "app.dailypulse.health"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.satishthakur.healthassistant"
+        applicationId = "app.dailypulse.health"
         minSdk = 21  // Required for google_sign_in + flutter_secure_storage
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

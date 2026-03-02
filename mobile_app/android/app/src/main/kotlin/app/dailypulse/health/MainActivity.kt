@@ -1,4 +1,4 @@
-package com.satishthakur.healthassistant
+package app.dailypulse.health
 
 import io.flutter.embedding.android.FlutterActivity
 

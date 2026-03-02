@@ -45,7 +45,7 @@ class HealthAssistantApp extends ConsumerWidget {
     }
 
     return MaterialApp.router(
-      title: 'Health Assistant',
+      title: 'Daily Pulse',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: ThemeMode.system,
