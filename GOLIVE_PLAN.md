@@ -6,8 +6,8 @@
 **Status:** Planning
 
 ## Decided
-- **Domain:** `dailypulse.app`
-- **API URL:** `api.dailypulse.app`
+- **Domain:** `dailyvitals.io` (registered on Namecheap, nameservers → Route53)
+- **API URL:** `api.dailyvitals.io`
 - **Bundle ID:** `app.dailypulse.health`
 
 ---
@@ -18,7 +18,7 @@
 |------|--------|-------|
 | Apple Developer account | ✅ Approved | |
 | AWS account | ✅ Exists | |
-| Domain name | ⏳ In progress | dailypulse.app — purchase via Route53 or Namecheap |
+| Domain name | ✅ Done | dailyvitals.io on Namecheap, NS → Route53 hosted zone |
 | Google OAuth (production) | ❌ Need iOS client | Currently dev mode (empty GOOGLE_CLIENT_ID) |
 | Garmin scraper | ✅ Working locally | Just needs to move to AWS |
 
