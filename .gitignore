@@ -7,6 +7,8 @@
 *~
 .env
 .env.local
+.env.prod
+infra/.env.prod
 
 # Go
 *.exe
